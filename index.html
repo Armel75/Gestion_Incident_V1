@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <title>IncidentManager Enterprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+              mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+            },
+            fontSize: {
+              xs: ['0.75rem', { lineHeight: '1rem' }],
+              sm: ['0.8125rem', { lineHeight: '1.25rem' }], // Slightly smaller standard text for high density
+              base: ['0.9375rem', { lineHeight: '1.5rem' }],
+            },
+            colors: {
+              brand: {
+                50: '#f4f7fa',
+                100: '#eef2f6', // Cool gray-blue tint for backgrounds
+                500: '#3b82f6', // More vibrant blue like Linear/Stripe
+                600: '#2563eb',
+                900: '#0f172a',
+              },
+              slate: {
+                25: '#fcfcfd', // Very light background
+                50: '#f8fafc',
+                100: '#f1f5f9',
+                200: '#e2e8f0',
+                300: '#cbd5e1',
+                400: '#94a3b8',
+                500: '#64748b',
+                600: '#475569',
+                700: '#334155',
+                800: '#1e293b',
+                850: '#172033', // Custom dark surface
+                900: '#0f172a',
+                950: '#020617', // Deep dark background
+              }
+            },
+            boxShadow: {
+              'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              'sm': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+            }
+          },
+        },
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      /* Default light mode */
+      body { background-color: #f8fafc; color: #0f172a; }
+      
+      /* Dark mode overrides */
+      html.dark body { background-color: #020617; color: #f8fafc; }
+      
+      /* Subtle Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; border: 2px solid #f8fafc; }
+      ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+      
+      /* Dark scrollbar */
+      html.dark ::-webkit-scrollbar-thumb { background: #334155; border-color: #020617; }
+      html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+      /* Reset focus outlines for mouse users, keep for keyboard */
+      :focus:not(:focus-visible) { outline: none; box-shadow: none; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.21.1?deps=react@18.2.0,react-dom@18.2.0",
+    "recharts": "https://esm.sh/recharts@2.10.3?deps=react@18.2.0,react-dom@18.2.0,lodash@4.17.21",
+    "lucide-react": "https://esm.sh/lucide-react@0.303.0?deps=react@18.2.0",
+    "lodash": "https://esm.sh/lodash@4.17.21"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
