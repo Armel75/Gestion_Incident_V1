@@ -26,12 +26,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
+  // Logo SOREPCO (Généré en SVG base64 pour affichage immédiat sans fichier externe)
+  // Si vous souhaitez utiliser votre fichier spécifique, remplacez cette longue chaîne par le chemin de votre image (ex: "/assets/logo-sorepco.png")
+  const logoSrc = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCAyMDAgODAiPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNDAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMDA5ZTQ5Ij5TT1JFUENPPC90ZXh0Pjwvc3ZnPg==";
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="mx-auto h-12 w-12 bg-brand-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-xl">IM</span>
-        </div>
+        <img
+          className="mx-auto h-20 w-auto"
+          src={logoSrc}
+          alt="Sorepco"
+        />
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900 dark:text-white">IncidentManager</h2>
         <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
           Connexion à l'espace entreprise
@@ -89,19 +95,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </button>
             </div>
           </form>
-          <div className="mt-6">
-             <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400">Demo Access</span>
-                </div>
-             </div>
-             <div className="mt-2 text-center text-xs text-slate-400 dark:text-slate-600">
-                L'authentification est gérée par le backend.
-             </div>
-          </div>
         </div>
       </div>
     </div>
