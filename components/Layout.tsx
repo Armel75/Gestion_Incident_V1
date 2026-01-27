@@ -43,7 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   ];
 
   if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
-    navigation.push({ name: 'Pilotage', href: '/pilotage', icon: PieChart });
+    navigation.push({ name: 'Tableau de pilotage', href: '/pilotage', icon: PieChart });
   }
 
   const isActive = (path: string) => {
