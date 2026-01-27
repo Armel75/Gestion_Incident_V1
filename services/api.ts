@@ -74,11 +74,48 @@ const MOCK_INCIDENTS: Incident[] = [
   }
 ];
 
+const API_BASE_URL = 'http://localhost:3001/api/v1';
+
+const apiFetch = async (path: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('accessToken');
+
+  return fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      'Content-Type': 'application/json',
+      Authorization: token ? `Bearer ${token}` : '',
+    },
+  });
+};
+
 export const api = {
+  // login: async (username: string, password: string): Promise<User> => {
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => resolve(MOCK_USER), MOCK_DELAY);
+  //   });
+  // },
+
   login: async (username: string, password: string): Promise<User> => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_USER), MOCK_DELAY);
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Login failed');
+    }
+
+    const data = await response.json();
+
+    // Stockage token
+    localStorage.setItem('accessToken', data.accessToken);
+
+    return data.user; // ou data selon ton API
   },
 
   logout: async (): Promise<void> => {
@@ -111,10 +148,9 @@ export const api = {
     });
   },
 
-  getIncidents: async (): Promise<Incident[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_INCIDENTS), MOCK_DELAY);
-    });
+  getIncidents: async () => {
+    const res = await apiFetch('/incidents');
+    return res.json();
   },
 
   getIncidentById: async (id: string): Promise<Incident | undefined> => {
