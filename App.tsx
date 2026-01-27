@@ -38,6 +38,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await api.logout();
+    localStorage.removeItem('accessToken');
     setUser(null);
   };
 

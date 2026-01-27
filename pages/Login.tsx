@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { User } from '../types';
 import { Lock, User as UserIcon } from 'lucide-react';
@@ -8,6 +9,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,12 +19,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     // Simulate API call
     try {
-        const user = await api.login(username, password);
-        onLogin(user);
+      const user = await api.login(username, password);
+      onLogin({
+        ...user,
+        role: user.role ?? 'USER', // sécurité
+      });
+      navigate('/', { replace: true });
     } catch (error) {
-        console.error("Login failed");
+      console.error("Login failed");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -69,7 +75,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Mot de passe</label>
               <div className="mt-1 relative rounded-md shadow-sm">
-                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <Lock className="h-5 w-5 text-slate-400" aria-hidden="true" />
                 </div>
                 <input

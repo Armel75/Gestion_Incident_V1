@@ -8,18 +8,20 @@ import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<IncidentStats | null>(null);
+    const [stats, setStats] = useState<IncidentStats>({
+    open: 0,
+    inProgress: 0,
+    closed: 0,
+    cancelled: 0,
+    byService: [],
+    byStatus: [],
+  });
   const [loading, setLoading] = useState(true);
   const { theme } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      const data = await api.getStats();
-      setStats(data);
       setLoading(false);
-    };
-    fetchStats();
   }, []);
 
   if (loading || !stats) {

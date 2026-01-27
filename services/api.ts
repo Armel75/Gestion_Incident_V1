@@ -1,4 +1,4 @@
-import { Incident, IncidentStats, User, Task } from '../types';
+import { Incident, IncidentStats, User, UserRole, Task } from '../types';
 import { MOCK_DELAY } from '../constants';
 
 // Simulating API calls with promises and delays
@@ -89,12 +89,19 @@ const apiFetch = async (path: string, options: RequestInit = {}) => {
   });
 };
 
+interface JwtPayload {
+  id: string | number;
+  username: string;
+  fullName: string;
+  roles?: string[];
+}
+
+function decodeJwt(token: string): JwtPayload {
+  const payload = token.split('.')[1];
+  return JSON.parse(atob(payload));
+}
+
 export const api = {
-  // login: async (username: string, password: string): Promise<User> => {
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => resolve(MOCK_USER), MOCK_DELAY);
-  //   });
-  // },
 
   login: async (username: string, password: string): Promise<User> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -105,17 +112,25 @@ export const api = {
       body: JSON.stringify({ username, password }),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Login failed');
-    }
-
     const data = await response.json();
 
-    // Stockage token
     localStorage.setItem('accessToken', data.accessToken);
 
-    return data.user; // ou data selon ton API
+    const user = decodeJwt(data.accessToken);
+    const role: UserRole =
+    Array.isArray(user.roles) &&
+    user.roles.length > 0 &&
+    typeof user.roles[0] === 'string'
+      ? (user.roles[0].toUpperCase() as UserRole)
+      : 'USER';
+
+    console.log(user);
+    return {
+      id: String(user.id),
+      username: user.username,
+      fullName: user.fullName || user.username,
+      role: role,
+    };
   },
 
   logout: async (): Promise<void> => {
