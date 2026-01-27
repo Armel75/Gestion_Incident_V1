@@ -9,7 +9,6 @@ import {
   LogOut, 
   Menu,
   Bell,
-  Search,
   PieChart,
   Command,
   Sun,
@@ -224,18 +223,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
           {/* Actions - Right */}
           <div className="flex items-center space-x-3 ml-auto">
-             <div className="relative hidden sm:block">
-               <Search className="absolute left-2.5 top-1.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
-               <input
-                  type="text"
-                  placeholder="Rechercher..." 
-                  className="h-8 w-64 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-9 pr-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all"
-               />
-               <div className="absolute right-2 top-1.5 flex items-center">
-                   <span className="text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded px-1">⌘K</span>
-               </div>
-             </div>
-
              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
              
              {/* Theme Toggle Button */}
@@ -255,7 +242,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         </header>
 
         {/* Page Scroll Area */}
-        <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-950 lg:bg-slate-50/50 lg:dark:bg-slate-950">
+        <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 lg:bg-slate-50/50 lg:dark:bg-slate-950">
            {children}
         </main>
       </div>

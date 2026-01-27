@@ -7,6 +7,7 @@ import { IncidentDetail } from './pages/IncidentDetail';
 import { NewIncident } from './pages/NewIncident';
 import { Login } from './pages/Login';
 import { Pilotage } from './pages/Pilotage';
+import { Settings } from './pages/Settings';
 import { User } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
@@ -74,6 +75,12 @@ const App: React.FC = () => {
             <ProtectedRoute user={user} onLogout={handleLogout}>
               {/* Logic to protect route based on role could be here or inside component */}
               {user?.role === 'ADMIN' || user?.role === 'MANAGER' ? <Pilotage /> : <Navigate to="/" />}
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <Settings />
             </ProtectedRoute>
           } />
 
