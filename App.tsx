@@ -11,6 +11,23 @@ import { User } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
 
+interface ProtectedRouteProps {
+  user: User | null;
+  children: React.ReactNode;
+  onLogout: () => void;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, children, onLogout }) => {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return (
+      <Layout user={user} onLogout={onLogout}>
+          {children}
+      </Layout>
+  );
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
 
@@ -23,17 +40,6 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    if (!user) {
-      return <Navigate to="/login" replace />;
-    }
-    return (
-        <Layout user={user} onLogout={handleLogout}>
-            {children}
-        </Layout>
-    );
-  };
-
   return (
     <ThemeProvider>
       <HashRouter>
@@ -41,31 +47,31 @@ const App: React.FC = () => {
           <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
           
           <Route path="/" element={
-            <ProtectedRoute>
+            <ProtectedRoute user={user} onLogout={handleLogout}>
               <Dashboard />
             </ProtectedRoute>
           } />
           
           <Route path="/incidents" element={
-            <ProtectedRoute>
+            <ProtectedRoute user={user} onLogout={handleLogout}>
               <IncidentList />
             </ProtectedRoute>
           } />
 
            <Route path="/incidents/new" element={
-            <ProtectedRoute>
+            <ProtectedRoute user={user} onLogout={handleLogout}>
               <NewIncident />
             </ProtectedRoute>
           } />
           
           <Route path="/incidents/:id" element={
-            <ProtectedRoute>
+            <ProtectedRoute user={user} onLogout={handleLogout}>
               <IncidentDetail userRole={user ? user.role : 'USER'} />
             </ProtectedRoute>
           } />
 
           <Route path="/pilotage" element={
-            <ProtectedRoute>
+            <ProtectedRoute user={user} onLogout={handleLogout}>
               {/* Logic to protect route based on role could be here or inside component */}
               {user?.role === 'ADMIN' || user?.role === 'MANAGER' ? <Pilotage /> : <Navigate to="/" />}
             </ProtectedRoute>
