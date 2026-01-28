@@ -10,6 +10,7 @@ import { Pilotage } from './pages/Pilotage';
 import { Settings } from './pages/Settings';
 import { TaskList } from './pages/TaskList';
 import { NewTask } from './pages/NewTask';
+import { IncidentAttachments } from './pages/IncidentAttachments';
 import { User } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
@@ -77,6 +78,12 @@ const App: React.FC = () => {
           <Route path="/incidents/:id/edit" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <NewIncident />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/incidents/:id/attachments" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <IncidentAttachments />
             </ProtectedRoute>
           } />
 

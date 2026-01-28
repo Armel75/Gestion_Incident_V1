@@ -197,6 +197,18 @@ export const api = {
     });
   },
 
+  deleteIncident: async (id: string): Promise<void> => {
+      return new Promise((resolve) => {
+          setTimeout(() => {
+              const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
+              if (index !== -1) {
+                  MOCK_INCIDENTS.splice(index, 1);
+              }
+              resolve();
+          }, MOCK_DELAY);
+      });
+  },
+
   getTasks: async (incidentId: string): Promise<Task[]> => {
     return new Promise((resolve) => {
       setTimeout(() => resolve([
@@ -204,6 +216,49 @@ export const api = {
         { id: 't2', title: 'Redémarrer le service', status: 'IN_PROGRESS', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
         { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26' },
       ]), MOCK_DELAY);
+    });
+  },
+
+  createTask: async (incidentId: string, taskData: Partial<Task>): Promise<Task> => {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                const newTask: Task = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    title: taskData.title || 'Nouvelle tâche',
+                    description: taskData.description,
+                    status: 'TODO',
+                    assignedTo: 'Unassigned',
+                    dueDate: new Date().toISOString()
+                };
+                MOCK_TASKS.push(newTask);
+                resolve(newTask);
+            }, MOCK_DELAY);
+        });
+    },
+
+    updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+      return new Promise((resolve, reject) => {
+          setTimeout(() => {
+              const index = MOCK_TASKS.findIndex(t => t.id === taskId);
+              if (index !== -1) {
+                  MOCK_TASKS[index] = { ...MOCK_TASKS[index], ...updates };
+                  resolve(MOCK_TASKS[index]);
+              } else {
+                  reject("Task not found");
+              }
+          }, MOCK_DELAY);
+      }); 
+    },
+    
+    deleteTask: async (taskId: string): Promise<void> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const index = MOCK_TASKS.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                MOCK_TASKS.splice(index, 1);
+            }
+            resolve();
+        }, MOCK_DELAY);
     });
   },
 

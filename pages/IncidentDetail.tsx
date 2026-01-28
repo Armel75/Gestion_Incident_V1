@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Incident, Task, UserRole } from '../types';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
-import { ArrowLeft, Calendar, User as UserIcon, CheckSquare, Plus, AlertTriangle, MoreHorizontal, Link as LinkIcon, Clock, Edit2, Trash2, XCircle, FileSpreadsheet, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, User as UserIcon, CheckSquare, Plus, AlertTriangle, Link as LinkIcon, Clock, Edit2, Trash2, XCircle, FileSpreadsheet, FileText, Paperclip, X, UploadCloud, Upload } from 'lucide-react';
 
 export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +12,7 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'details' | 'activity'>('details');
+  const [incidentAttachments, setIncidentAttachments] = useState<string[]>(['error_log.png']);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,6 +66,16 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
       }
   };
 
+  const handleDeleteTaskAttachments = async (taskId: string) => {
+      if(window.confirm("Voulez-vous supprimer toutes les pièces jointes associées à cette tâche ?")) {
+          alert("Pièces jointes supprimées pour la tâche " + taskId);
+      }
+  };
+
+  const handleAddTaskAttachments = (taskId: string) => {
+      navigate(`/incidents/${id}/tasks/${taskId}/edit`);
+  };
+
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
@@ -96,6 +107,17 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
       // Mock download
       const mockContent = "File content placeholder for " + fileName;
       downloadFile(mockContent, fileName, 'text/plain');
+  };
+
+  const handleDeleteIncidentAttachment = (fileName: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if(window.confirm(`Supprimer la pièce jointe ${fileName} ?`)) {
+          setIncidentAttachments(prev => prev.filter(f => f !== fileName));
+      }
+  };
+
+  const handleAddIncidentAttachment = () => {
+      navigate(`/incidents/${id}/attachments`);
   };
 
   if (loading) return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-800 dark:border-slate-400"></div></div>;
@@ -201,17 +223,37 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
 
                         {/* Attachments */}
                         <div>
-                           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Pièces jointes</h3>
-                           <div className="flex gap-3">
-                                <div onClick={() => handleAttachmentClick('error_log.png')} className="group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm cursor-pointer bg-white dark:bg-slate-900 transition-all">
-                                    <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
-                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">PNG</span>
+                           <div className="flex items-center justify-between mb-3">
+                               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pièces jointes</h3>
+                               <button 
+                                 onClick={handleAddIncidentAttachment} 
+                                 className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm text-xs"
+                                 title="Accéder à la page d'ajout de fichiers"
+                               >
+                                   <UploadCloud className="h-4 w-4" /> 
+                                   <span>Ajouter des pièces jointes</span>
+                               </button>
+                           </div>
+                           <div className="flex flex-wrap gap-3">
+                                {incidentAttachments.map(fileName => (
+                                    <div key={fileName} onClick={() => handleAttachmentClick(fileName)} className="relative group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm cursor-pointer bg-white dark:bg-slate-900 transition-all">
+                                        <button 
+                                            onClick={(e) => handleDeleteIncidentAttachment(fileName, e)}
+                                            className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
+                                            title="Supprimer la pièce jointe"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                        <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">PNG</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-brand-600 dark:group-hover:text-brand-400">{fileName}</p>
+                                            <p className="text-xs text-slate-400 dark:text-slate-500">240 KB</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-brand-600 dark:group-hover:text-brand-400">error_log.png</p>
-                                        <p className="text-xs text-slate-400 dark:text-slate-500">240 KB</p>
-                                    </div>
-                                </div>
+                                ))}
+                                {incidentAttachments.length === 0 && <span className="text-sm text-slate-400 italic">Aucune pièce jointe.</span>}
                            </div>
                         </div>
 
@@ -223,35 +265,86 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                     <Plus className="h-3 w-3" /> Ajouter tâche
                                 </button>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
                                 {tasks.length === 0 ? (
-                                    <div className="p-4 text-center text-xs text-slate-400 dark:text-slate-500">Aucune tâche associée</div>
+                                    <div className="p-8 text-center text-slate-500 dark:text-slate-400">Aucune tâche associée</div>
                                 ) : (
-                                    tasks.map((task, idx) => (
-                                    <div key={task.id} className={`flex items-center justify-between p-3 gap-3 bg-white dark:bg-slate-900 ${idx !== tasks.length -1 ? 'border-b border-slate-100 dark:border-slate-800' : ''} hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group`}>
-                                        <div className="flex items-center gap-3 flex-1">
-                                            <button className={`flex-shrink-0 h-4 w-4 rounded border ${task.status === 'DONE' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent'} flex items-center justify-center transition-all`}>
-                                                <CheckSquare className="h-3 w-3 fill-current" />
-                                            </button>
-                                            <div className="flex-1">
-                                                <span className={`text-sm block ${task.status === 'DONE' ? 'text-slate-400 dark:text-slate-600 line-through' : 'text-slate-700 dark:text-slate-300'}`}>{task.title}</span>
-                                                {task.description && <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">{task.description}</span>}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <img src={`https://ui-avatars.com/api/?name=${task.assignedTo}&background=random&size=20`} className="h-5 w-5 rounded-full" alt="" />
-                                                <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(task.dueDate).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => handleEditTask(task.id)} className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 rounded transition-colors dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-800 dark:hover:bg-brand-900/50" title="Modifier la tâche">
-                                                <Edit2 className="h-3 w-3" /> Modifier
-                                            </button>
-                                            <button onClick={() => handleDeleteTask(task.id)} className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50" title="Supprimer la tâche">
-                                                <Trash2 className="h-3 w-3" /> Supprimer
-                                            </button>
-                                        </div>
-                                    </div>
-                                )))}
+                                    <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                                        <thead className="bg-slate-50 dark:bg-slate-950">
+                                            <tr>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/4">Titre</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
+                                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Échéance</th>
+                                                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[280px]">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                            {tasks.map((task) => (
+                                                <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                                    <td className="px-4 py-3 align-top">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`flex-shrink-0 h-4 w-4 rounded border ${task.status === 'DONE' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent'} flex items-center justify-center`}>
+                                                                <CheckSquare className="h-3 w-3 fill-current" />
+                                                            </div>
+                                                            <span className={`text-sm font-medium ${task.status === 'DONE' ? 'text-slate-400 dark:text-slate-600 line-through' : 'text-slate-900 dark:text-slate-100'}`}>
+                                                                {task.title}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 align-top">
+                                                        <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                                                            {task.description || '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap align-top">
+                                                        <div className="flex items-center gap-2">
+                                                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                                            <span className="text-xs text-slate-600 dark:text-slate-300">
+                                                                {new Date(task.dueDate).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-right align-top">
+                                                        <div className="flex flex-col gap-2 items-end sm:flex-row sm:items-center sm:justify-end sm:flex-wrap">
+                                                            <div className="flex items-center gap-2">
+                                                                <button 
+                                                                    onClick={() => handleAddTaskAttachments(task.id)}
+                                                                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                                                                    title="Ajouter des pièces jointes à cette tâche"
+                                                                >
+                                                                    <Upload className="h-3 w-3" /> Ajouter P.J.
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleDeleteTaskAttachments(task.id)}
+                                                                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded transition-colors dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-900/50"
+                                                                    title="Supprimer toutes les pièces jointes de cette tâche"
+                                                                >
+                                                                    <X className="h-3 w-3" /> Vider P.J.
+                                                                </button>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button 
+                                                                    onClick={() => handleEditTask(task.id)} 
+                                                                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded transition-colors dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700" 
+                                                                    title="Modifier les informations de la tâche"
+                                                                >
+                                                                    <Edit2 className="h-3 w-3" /> Modifier
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleDeleteTask(task.id)} 
+                                                                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50" 
+                                                                    title="Supprimer définitivement la tâche"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" /> Supprimer
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
                     </div>
