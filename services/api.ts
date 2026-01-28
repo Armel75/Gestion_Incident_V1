@@ -74,6 +74,12 @@ const MOCK_INCIDENTS: Incident[] = [
   }
 ];
 
+let MOCK_TASKS: Task[] = [
+  { id: 't1', title: 'Analyser les logs', status: 'DONE', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
+  { id: 't2', title: 'Redémarrer le service', status: 'IN_PROGRESS', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
+  { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26' },
+];
+
 const API_BASE_URL = 'http://localhost:3001/api/v1';
 
 const apiFetch = async (path: string, options: RequestInit = {}) => {
@@ -164,8 +170,11 @@ export const api = {
   },
 
   getIncidents: async () => {
-    const res = await apiFetch('/incidents');
-    return res.json();
+    // const res = await apiFetch('/incidents');
+    // return res.json();
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(MOCK_INCIDENTS), MOCK_DELAY);
+    });
   },
 
   getIncidentById: async (id: string): Promise<Incident | undefined> => {
@@ -196,6 +205,12 @@ export const api = {
         { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26' },
       ]), MOCK_DELAY);
     });
+  },
+
+  getAllTasks: async (): Promise<Task[]> => {
+      return new Promise((resolve) => {
+          setTimeout(() => resolve(MOCK_TASKS), MOCK_DELAY);
+      });
   },
 
   createIncident: async (data: Partial<Incident>): Promise<Incident> => {
