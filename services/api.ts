@@ -74,6 +74,12 @@ const MOCK_INCIDENTS: Incident[] = [
   }
 ];
 
+let MOCK_TASKS: Task[] = [
+  { id: 't1', title: 'Analyser les logs', status: 'DONE', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
+  { id: 't2', title: 'Redémarrer le service', status: 'IN_PROGRESS', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
+  { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26' },
+];
+
 export const api = {
   login: async (username: string, password: string): Promise<User> => {
     return new Promise((resolve) => {
@@ -123,13 +129,90 @@ export const api = {
     });
   },
 
+  updateIncident: async (id: string, updates: Partial<Incident>): Promise<Incident> => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
+            if (index !== -1) {
+                MOCK_INCIDENTS[index] = { ...MOCK_INCIDENTS[index], ...updates };
+                resolve(MOCK_INCIDENTS[index]);
+            } else {
+                reject("Incident not found");
+            }
+        }, MOCK_DELAY);
+    });
+  },
+
+  deleteIncident: async (id: string): Promise<void> => {
+      return new Promise((resolve) => {
+          setTimeout(() => {
+              const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
+              if (index !== -1) {
+                  MOCK_INCIDENTS.splice(index, 1);
+              }
+              resolve();
+          }, MOCK_DELAY);
+      });
+  },
+
   getTasks: async (incidentId: string): Promise<Task[]> => {
     return new Promise((resolve) => {
-      setTimeout(() => resolve([
-        { id: 't1', title: 'Analyser les logs', status: 'DONE', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
-        { id: 't2', title: 'Redémarrer le service', status: 'IN_PROGRESS', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
-        { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26' },
-      ]), MOCK_DELAY);
+      setTimeout(() => resolve(MOCK_TASKS), MOCK_DELAY);
+    });
+  },
+
+  getTaskById: async (taskId: string): Promise<Task | undefined> => {
+    return new Promise((resolve) => {
+        setTimeout(() => resolve(MOCK_TASKS.find(t => t.id === taskId)), MOCK_DELAY);
+    });
+  },
+
+  getAllTasks: async (): Promise<Task[]> => {
+      return new Promise((resolve) => {
+          setTimeout(() => resolve(MOCK_TASKS), MOCK_DELAY);
+      });
+  },
+
+  createTask: async (incidentId: string, taskData: Partial<Task>): Promise<Task> => {
+      return new Promise((resolve) => {
+          setTimeout(() => {
+              const newTask: Task = {
+                  id: Math.random().toString(36).substr(2, 9),
+                  title: taskData.title || 'Nouvelle tâche',
+                  description: taskData.description,
+                  status: 'TODO',
+                  assignedTo: 'Unassigned',
+                  dueDate: new Date().toISOString()
+              };
+              MOCK_TASKS.push(newTask);
+              resolve(newTask);
+          }, MOCK_DELAY);
+      });
+  },
+
+  updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            const index = MOCK_TASKS.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                MOCK_TASKS[index] = { ...MOCK_TASKS[index], ...updates };
+                resolve(MOCK_TASKS[index]);
+            } else {
+                reject("Task not found");
+            }
+        }, MOCK_DELAY);
+    });
+  },
+
+  deleteTask: async (taskId: string): Promise<void> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const index = MOCK_TASKS.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                MOCK_TASKS.splice(index, 1);
+            }
+            resolve();
+        }, MOCK_DELAY);
     });
   },
 

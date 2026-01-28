@@ -8,6 +8,8 @@ import { NewIncident } from './pages/NewIncident';
 import { Login } from './pages/Login';
 import { Pilotage } from './pages/Pilotage';
 import { Settings } from './pages/Settings';
+import { TaskList } from './pages/TaskList';
+import { NewTask } from './pages/NewTask';
 import { User } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
@@ -69,6 +71,30 @@ const App: React.FC = () => {
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <IncidentDetail userRole={user ? user.role : 'USER'} />
             </ProtectedRoute>
+          } />
+
+          <Route path="/incidents/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewIncident />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/incidents/:incidentId/tasks/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewTask />
+            </ProtectedRoute>
+          } />
+
+           <Route path="/incidents/:incidentId/tasks/:taskId/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewTask />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/tasks" element={
+             <ProtectedRoute user={user} onLogout={handleLogout}>
+                <TaskList />
+             </ProtectedRoute>
           } />
 
           <Route path="/pilotage" element={
