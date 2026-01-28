@@ -174,6 +174,20 @@ export const api = {
     });
   },
 
+  updateIncident: async (id: string, updates: Partial<Incident>): Promise<Incident> => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
+            if (index !== -1) {
+                MOCK_INCIDENTS[index] = { ...MOCK_INCIDENTS[index], ...updates };
+                resolve(MOCK_INCIDENTS[index]);
+            } else {
+                reject("Incident not found");
+            }
+        }, MOCK_DELAY);
+    });
+  },
+
   getTasks: async (incidentId: string): Promise<Task[]> => {
     return new Promise((resolve) => {
       setTimeout(() => resolve([
