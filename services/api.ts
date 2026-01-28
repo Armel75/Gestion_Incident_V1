@@ -75,9 +75,8 @@ const MOCK_INCIDENTS: Incident[] = [
 ];
 
 let MOCK_TASKS: Task[] = [
-  { id: 't1', title: 'Analyser les logs', status: 'DONE', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
-  { id: 't2', title: 'Redémarrer le service', status: 'IN_PROGRESS', assignedTo: 'Jean Dupont', dueDate: '2023-10-25' },
-  { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26' },
+  { id: 't2', title: 'Redémarrer le service', status: 'IN_PROGRESS', assignedTo: 'Jean Dupont', dueDate: '2023-10-25', description: 'Procédure standard de redémarrage via SSH.' },
+  { id: 't3', title: 'Rédiger le rapport REX', status: 'TODO', assignedTo: 'Pending', dueDate: '2023-10-26', description: 'Inclure les logs et les captures d\'écran.' },
 ];
 
 export const api = {
