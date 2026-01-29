@@ -90,7 +90,8 @@ export const IncidentList: React.FC = () => {
 
   const handleCloseIncident = async (e: React.MouseEvent, incident: Incident) => {
       e.stopPropagation();
-      if (window.confirm(`Voulez-vous vraiment clôturer l'incident ${incident.reference} ?`)) {
+      // Confirmation explicite demandée par les règles métier
+      if (window.confirm(`Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`)) {
           await api.updateIncident(incident.id, { status: 'CLOSED' });
           fetchIncidents(); // Refresh list
       }
@@ -163,7 +164,7 @@ export const IncidentList: React.FC = () => {
             <thead className="bg-slate-50/50 dark:bg-slate-900/90 sticky top-0 z-10 backdrop-blur-sm">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sujet</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Statut</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">
                     <div className="flex items-center gap-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">Priorité <ArrowUpDown className="h-3 w-3" /></div>
