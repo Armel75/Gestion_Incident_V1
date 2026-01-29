@@ -125,25 +125,25 @@ export const NewTask: React.FC = () => {
                       />
                   </div>
                   <div>
-                      <label htmlFor="attachments" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pièces jointes</label>
-                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                        <div className="space-y-1 text-center">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pièces jointes</label>
+                      <label
+                        htmlFor="task-file-upload"
+                        className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full block"
+                      >
+                        <div className="space-y-1 text-center w-full">
                           <UploadCloud className="mx-auto h-12 w-12 text-slate-400" />
                           <div className="flex text-sm text-slate-600 dark:text-slate-400 justify-center">
-                            <label
-                              htmlFor="file-upload"
-                              className="relative cursor-pointer bg-white dark:bg-slate-900 rounded-md font-medium text-brand-600 hover:text-brand-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-brand-500"
-                            >
+                            <span className="relative rounded-md font-medium text-brand-600 hover:text-brand-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-brand-500">
                               <span>Sélectionner des fichiers</span>
-                              <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} />
-                            </label>
+                            </span>
                             <p className="pl-1">ou glisser-déposer</p>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-500">
                             PNG, JPG, PDF, DOCX up to 10MB
                           </p>
+                          <input id="task-file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} />
                         </div>
-                      </div>
+                      </label>
                       {formData.attachments.length > 0 && (
                           <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                              {formData.attachments.map((file, index) => (

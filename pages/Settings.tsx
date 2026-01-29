@@ -1,12 +1,17 @@
 import React from 'react';
-import { Layers, FileText, MapPin, Globe, ChevronRight, Settings as SettingsIcon } from 'lucide-react';
+import { Layers, FileText, MapPin, Globe, ChevronRight, Settings as SettingsIcon, GitMerge, FileStack } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const Settings: React.FC = () => {
+  const navigate = useNavigate();
+
   const items = [
-    { title: 'Catégorie', description: 'Gérer les catégories d’incidents', icon: Layers },
-    { title: 'Processus', description: 'Gérer les processus métier', icon: FileText },
-    { title: 'Site', description: 'Gérer les sites et localisations', icon: MapPin },
-    { title: 'Type de site', description: 'Gérer les types de sites', icon: Globe },
+    { title: 'Catégorie', description: 'Gérer les catégories d’incidents', icon: Layers, path: '/settings/categories' },
+    { title: 'Sous-catégorie', description: 'Gérer les sous-catégories', icon: GitMerge, path: '/settings/sub-categories' },
+    { title: 'Processus', description: 'Gérer les processus métier', icon: FileText, path: '/settings/processes' },
+    { title: 'Sous-processus', description: 'Gérer les sous-processus', icon: FileStack, path: '/settings/sub-processes' },
+    { title: 'Site', description: 'Gérer les sites et localisations', icon: MapPin, path: '/settings/sites' },
+    { title: 'Type de site', description: 'Gérer les types de sites', icon: Globe, path: '#' },
   ];
 
   return (
@@ -25,7 +30,8 @@ export const Settings: React.FC = () => {
         {items.map((item) => (
           <div 
             key={item.title}
-            className="group flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:border-brand-500 dark:hover:border-brand-500 cursor-pointer transition-all shadow-sm hover:shadow-md"
+            onClick={() => item.path !== '#' && navigate(item.path)}
+            className={`group flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition-all shadow-sm hover:shadow-md ${item.path !== '#' ? 'hover:border-brand-500 dark:hover:border-brand-500 cursor-pointer' : 'opacity-75 cursor-default'}`}
           >
             <div className="flex-shrink-0 h-12 w-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20 transition-colors">
               <item.icon className="h-6 w-6" />
