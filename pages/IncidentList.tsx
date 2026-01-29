@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { Incident } from '../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
-import { Search, ChevronLeft, ChevronRight, Plus, ArrowUpDown, XCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Plus, ArrowUpDown, XCircle, FileSpreadsheet, FileText, CheckCircle } from 'lucide-react';
 
 const SERVICES_FILTER_OPTIONS = ['IT Infrastructure', 'IT Support', 'Logistique', 'Finance', 'RH', 'Services Généraux'];
 
@@ -19,14 +19,15 @@ export const IncidentList: React.FC = () => {
   const statusFilter = searchParams.get('status');
 
   useEffect(() => {
-    const fetchIncidents = async () => {
-      setLoading(true);
-      const data = await api.getIncidents();
-      setIncidents(data);
-      setLoading(false);
-    };
     fetchIncidents();
   }, []);
+
+  const fetchIncidents = async () => {
+    setLoading(true);
+    const data = await api.getIncidents();
+    setIncidents(data);
+    setLoading(false);
+  };
 
   const clearFilter = () => {
       setSearchParams({});
@@ -56,6 +57,45 @@ export const IncidentList: React.FC = () => {
           return true;
       });
   }, [incidents, statusFilter, serviceFilter, searchTerm]);
+
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
+      e.stopPropagation();
+      const csvContent = [
+          ['Reference', 'Title', 'Status', 'Priority', 'Service', 'Created At'],
+          [incident.reference, incident.title, incident.status, incident.priority, incident.service, incident.createdAt]
+      ].map(e => e.join(",")).join("\n");
+      
+      downloadFile(csvContent, `incident_${incident.reference}.csv`, 'text/csv');
+  };
+
+  const handleExportPDF = (e: React.MouseEvent, incident: Incident) => {
+      e.stopPropagation();
+      // Simulating PDF download with a dummy text file
+      const dummyContent = `RAPPORT INCIDENT\n\nREF: ${incident.reference}\nTITRE: ${incident.title}\nSTATUT: ${incident.status}\n...`;
+      downloadFile(dummyContent, `incident_${incident.reference}.pdf`, 'application/pdf');
+      alert(`Export PDF simulé pour ${incident.reference}`);
+  };
+
+  const handleCloseIncident = async (e: React.MouseEvent, incident: Incident) => {
+      e.stopPropagation();
+      // Confirmation explicite demandée par les règles métier
+      if (window.confirm(`Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`)) {
+          await api.updateIncident(incident.id, { status: 'CLOSED' });
+          fetchIncidents(); // Refresh list
+      }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 transition-colors duration-200">
@@ -124,14 +164,14 @@ export const IncidentList: React.FC = () => {
             <thead className="bg-slate-50/50 dark:bg-slate-900/90 sticky top-0 z-10 backdrop-blur-sm">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sujet</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Statut</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">
                     <div className="flex items-center gap-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">Priorité <ArrowUpDown className="h-3 w-3" /></div>
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Service</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Assigné</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Mis à jour</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[280px]">Actions Rapides</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-50 dark:divide-slate-800">
@@ -146,6 +186,9 @@ export const IncidentList: React.FC = () => {
                   </td>
                   <td className="px-6 py-3">
                       <div className="text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{incident.title}</div>
+                      <div className="text-xs text-slate-400 font-mono mt-1 md:hidden">
+                        {new Date(incident.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </div>
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
                       <StatusBadge status={incident.status} />
@@ -168,8 +211,32 @@ export const IncidentList: React.FC = () => {
                         </div>
                     ) : <span className="text-xs text-slate-400 italic">--</span>}
                   </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-slate-400 font-mono">
-                      {new Date(incident.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  <td className="px-6 py-3 whitespace-nowrap text-right text-xs">
+                      <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={(e) => handleExportPDF(e, incident)}
+                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
+                            title="Exporter en PDF"
+                          >
+                            <FileText className="h-3.5 w-3.5" /> PDF
+                          </button>
+                          <button 
+                            onClick={(e) => handleExportExcel(e, incident)}
+                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded transition-colors dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50"
+                            title="Exporter en Excel"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
+                          </button>
+                          {incident.status !== 'CLOSED' && incident.status !== 'CANCELLED' && (
+                             <button 
+                                onClick={(e) => handleCloseIncident(e, incident)}
+                                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                                title="Clôturer l'incident"
+                             >
+                                <CheckCircle className="h-3.5 w-3.5" /> Clôturer
+                             </button>
+                          )}
+                      </div>
                   </td>
                 </tr>
               ))}

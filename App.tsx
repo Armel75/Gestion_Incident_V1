@@ -11,6 +11,17 @@ import { Settings } from './pages/Settings';
 import { TaskList } from './pages/TaskList';
 import { NewTask } from './pages/NewTask';
 import { IncidentAttachments } from './pages/IncidentAttachments';
+import { TaskAttachments } from './pages/TaskAttachments';
+import { SiteList } from './pages/SiteList';
+import { NewSite } from './pages/NewSite';
+import { CategoryList } from './pages/CategoryList';
+import { NewCategory } from './pages/NewCategory';
+import { SubCategoryList } from './pages/SubCategoryList';
+import { NewSubCategory } from './pages/NewSubCategory';
+import { ProcessList } from './pages/ProcessList';
+import { NewProcess } from './pages/NewProcess';
+import { SubProcessList } from './pages/SubProcessList';
+import { NewSubProcess } from './pages/NewSubProcess';
 import { User } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
@@ -115,6 +126,91 @@ const App: React.FC = () => {
           <Route path="/settings" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <Settings />
+            </ProtectedRoute>
+          } />
+
+          {/* Sites */}
+          <Route path="/settings/sites" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <SiteList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/sites/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewSite />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/sites/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewSite />
+            </ProtectedRoute>
+          } />
+
+          {/* Categories */}
+          <Route path="/settings/categories" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <CategoryList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/categories/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewCategory />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/categories/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewCategory />
+            </ProtectedRoute>
+          } />
+
+          {/* SubCategories */}
+          <Route path="/settings/sub-categories" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <SubCategoryList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/sub-categories/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewSubCategory />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/sub-categories/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewSubCategory />
+            </ProtectedRoute>
+          } />
+
+          {/* Processes */}
+          <Route path="/settings/processes" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <ProcessList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/processes/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewProcess />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/processes/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewProcess />
+            </ProtectedRoute>
+          } />
+
+          {/* SubProcesses */}
+          <Route path="/settings/sub-processes" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <SubProcessList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/sub-processes/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewSubProcess />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/sub-processes/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewSubProcess />
             </ProtectedRoute>
           } />
 

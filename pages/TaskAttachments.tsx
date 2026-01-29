@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, UploadCloud } from 'lucide-react';
 
-export const IncidentAttachments: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+export const TaskAttachments: React.FC = () => {
+  const { incidentId, taskId } = useParams<{ incidentId: string; taskId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -17,10 +17,10 @@ export const IncidentAttachments: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulating API call delay for UX feedback
+    // Simulating API call delay for task attachment upload
     setTimeout(() => {
         setLoading(false);
-        navigate(`/incidents/${id}`);
+        navigate(`/incidents/${incidentId}`);
     }, 800);
   };
 
@@ -28,10 +28,10 @@ export const IncidentAttachments: React.FC = () => {
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-20">
          <div className="flex items-center gap-4">
-            <button type="button" onClick={() => navigate(`/incidents/${id}`)} className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button type="button" onClick={() => navigate(`/incidents/${incidentId}`)} className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Ajouter des pièces jointes</h1>
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Pièces jointes de la tâche</h1>
          </div>
        </div>
 
@@ -39,11 +39,11 @@ export const IncidentAttachments: React.FC = () => {
             <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6 space-y-6">
                 <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">
-                          Sélectionner les fichiers à ajouter à l'incident
+                          Ajouter des documents à la tâche
                       </label>
                       <div className="mt-1 flex justify-center border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                          <label
-                              htmlFor="file-upload"
+                              htmlFor="task-file-upload"
                               className="relative cursor-pointer w-full h-full py-10 px-6 flex flex-col items-center justify-center text-center focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-brand-500 rounded-md"
                          >
                             <UploadCloud className="mx-auto h-12 w-12 text-slate-400" />
@@ -56,7 +56,7 @@ export const IncidentAttachments: React.FC = () => {
                             <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
                               Tous types de fichiers acceptés
                             </p>
-                            <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} />
+                            <input id="task-file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} />
                          </label>
                       </div>
                       {files.length > 0 && (
@@ -77,7 +77,7 @@ export const IncidentAttachments: React.FC = () => {
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                      <button 
                         type="button" 
-                        onClick={() => navigate(`/incidents/${id}`)}
+                        onClick={() => navigate(`/incidents/${incidentId}`)}
                         className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
                      >
                          Annuler
@@ -87,7 +87,7 @@ export const IncidentAttachments: React.FC = () => {
                         disabled={loading || files.length === 0}
                         className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 dark:hover:bg-brand-500 rounded-md shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
                      >
-                         {loading ? 'Envoi...' : <><Save className="h-4 w-4" /> Confirmer l'ajout</>}
+                         {loading ? 'Envoi...' : <><Save className="h-4 w-4" /> Enregistrer P.J.</>}
                      </button>
                 </div>
             </form>

@@ -73,7 +73,8 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
   };
 
   const handleAddTaskAttachments = (taskId: string) => {
-      navigate(`/incidents/${id}/tasks/${taskId}/edit`);
+      // Changed to navigate to the dedicated attachment page for tasks
+      navigate(`/incidents/${id}/tasks/${taskId}/attachments`);
   };
 
   const downloadFile = (content: string, fileName: string, mimeType: string) => {

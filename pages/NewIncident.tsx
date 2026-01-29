@@ -48,12 +48,13 @@ export const NewIncident: React.FC = () => {
     keyProcess: '',
     subProcess: '',
     description: '',
-    impactedService: '',
+    impactedServices: [] as string[],
     criticality: 'Moyenne',
     urgency: 'Moyenne',
     responsibleServices: [] as string[],
     assignedUsers: [] as string[],
-    dueDate: ''
+    dueDate: '',
+    attachments: [] as File[]
   });
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export const NewIncident: React.FC = () => {
                     description: incident.description,
                     dueDate: incident.dueDate ? incident.dueDate.split('T')[0] : '',
                     category: incident.category,
-                    impactedService: incident.service,
+                    impactedServices: incident.service ? incident.service.split(', ') : [],
                     // Note: Other fields would need detailed mapping if they existed in the Incident type
                     // For this exercise, we keep it simple as the type is limited
                     site: incident.site ? incident.site.split(', ') : []
@@ -81,6 +82,15 @@ export const NewIncident: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFormData(prev => ({
+        ...prev,
+        attachments: [...prev.attachments, ...Array.from(e.target.files || [])]
+      }));
+    }
   };
 
   const handleMultiSelectChange = (field: string, values: string[]) => {
@@ -121,7 +131,7 @@ export const NewIncident: React.FC = () => {
         title: `${formData.category} - ${formData.scope || 'Incident'}`, 
         site: formData.site.join(', '), // Joining array for string display in current model
         category: formData.subCategory === 'Autre' ? formData.otherSubCategory : formData.subCategory || formData.category,
-        service: formData.impactedService,
+        service: formData.impactedServices.join(', '),
         description: formData.description,
         priority: mapUrgencyToPriority(formData.urgency),
         dueDate: formData.dueDate
@@ -323,18 +333,39 @@ export const NewIncident: React.FC = () => {
                   </div>
                   <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pièces jointes</label>
-                      <div className="flex justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-700 px-6 py-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                      <label
+                        htmlFor="file-upload-incident"
+                        className="flex justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-700 px-6 py-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer w-full"
+                      >
                         <div className="text-center">
                             <Paperclip className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                             <div className="mt-4 flex text-sm leading-6 text-slate-600 dark:text-slate-400 justify-center">
-                                <span className="relative cursor-pointer rounded-md bg-transparent font-semibold text-brand-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-600 focus-within:ring-offset-2 hover:text-brand-500">
-                                    <span>Upload a file</span>
+                                <span className="font-semibold text-brand-600 hover:text-brand-500">
+                                    Upload a file
                                 </span>
                                 <p className="pl-1">or drag and drop</p>
                             </div>
                             <p className="text-xs leading-5 text-slate-500 dark:text-slate-500">PNG, JPG, PDF up to 10MB</p>
                         </div>
-                      </div>
+                        <input
+                            id="file-upload-incident"
+                            name="attachments"
+                            type="file"
+                            className="sr-only"
+                            multiple
+                            onChange={handleFileChange}
+                        />
+                      </label>
+                      {formData.attachments.length > 0 && (
+                          <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                             {formData.attachments.map((file, index) => (
+                                 <li key={index} className="flex items-center justify-between py-2 pl-3 pr-4 text-sm">
+                                     <span className="truncate font-medium text-slate-900 dark:text-white">{file.name}</span>
+                                     <span className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</span>
+                                 </li>
+                             ))}
+                          </ul>
+                      )}
                   </div>
               </div>
           </section>
@@ -346,16 +377,13 @@ export const NewIncident: React.FC = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service impacté</label>
-                      <select 
-                        name="impactedService" 
-                        value={formData.impactedService} 
-                        onChange={handleChange}
-                        className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
-                      >
-                          <option value="">Sélectionner...</option>
-                          {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <MultiSelect 
+                        label="Service(s) impacté(s)"
+                        options={SERVICES}
+                        selected={formData.impactedServices}
+                        onChange={(vals) => handleMultiSelectChange('impactedServices', vals)}
+                        placeholder="Sélectionner..."
+                      />
                   </div>
                   <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Criticité Métier</label>

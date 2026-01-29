@@ -50,6 +50,36 @@ export interface Task {
   dueDate: string;
 }
 
+// Settings Types
+export interface Site {
+  id: string;
+  name: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface SubCategory {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface Process {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface SubProcess {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 // API Response Wrappers
 export interface ApiResponse<T> {
   data: T;
