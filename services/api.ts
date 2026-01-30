@@ -81,34 +81,34 @@ let MOCK_TASKS: Task[] = [
 ];
 
 let MOCK_SITES: Site[] = [
-    { id: 's1', name: 'Paris La Défense' },
-    { id: 's2', name: 'Lyon Entrepôt' },
-    { id: 's3', name: 'Bordeaux Siège' },
-    { id: 's4', name: 'Nantes Agence' },
+  { id: 's1', name: 'Paris La Défense' },
+  { id: 's2', name: 'Lyon Entrepôt' },
+  { id: 's3', name: 'Bordeaux Siège' },
+  { id: 's4', name: 'Nantes Agence' },
 ];
 
 let MOCK_CATEGORIES: Category[] = [
-    { id: 'c1', name: 'Matériel / Hardware', description: 'Problèmes liés aux équipements physiques' },
-    { id: 'c2', name: 'Logiciel / Software', description: 'Problèmes liés aux applications et OS' },
-    { id: 'c3', name: 'Réseau / Network', description: 'Connectivité et infrastructure réseau' },
+  { id: 'c1', name: 'Matériel / Hardware', description: 'Problèmes liés aux équipements physiques' },
+  { id: 'c2', name: 'Logiciel / Software', description: 'Problèmes liés aux applications et OS' },
+  { id: 'c3', name: 'Réseau / Network', description: 'Connectivité et infrastructure réseau' },
 ];
 
 let MOCK_SUB_CATEGORIES: SubCategory[] = [
-    { id: 'sc1', name: 'Ordinateur', description: 'Poste de travail fixe ou portable' },
-    { id: 'sc2', name: 'Imprimante', description: 'Imprimantes réseau et locales' },
-    { id: 'sc3', name: 'OS', description: 'Système d\'exploitation Windows/Linux/Mac' },
+  { id: 'sc1', name: 'Ordinateur', description: 'Poste de travail fixe ou portable' },
+  { id: 'sc2', name: 'Imprimante', description: 'Imprimantes réseau et locales' },
+  { id: 'sc3', name: 'OS', description: 'Système d\'exploitation Windows/Linux/Mac' },
 ];
 
 let MOCK_PROCESSES: Process[] = [
-    { id: 'p1', name: 'Ventes', description: 'Processus commerciaux' },
-    { id: 'p2', name: 'Achats', description: 'Gestion des fournisseurs et commandes' },
-    { id: 'p3', name: 'Logistique', description: 'Gestion des stocks et expéditions' },
+  { id: 'p1', name: 'Ventes', description: 'Processus commerciaux' },
+  { id: 'p2', name: 'Achats', description: 'Gestion des fournisseurs et commandes' },
+  { id: 'p3', name: 'Logistique', description: 'Gestion des stocks et expéditions' },
 ];
 
 let MOCK_SUB_PROCESSES: SubProcess[] = [
-    { id: 'sp1', name: 'Commande Client', description: 'Prise et validation de commande' },
-    { id: 'sp2', name: 'Facturation', description: 'Émission des factures clients' },
-    { id: 'sp3', name: 'Expédition', description: 'Préparation et envoi des colis' },
+  { id: 'sp1', name: 'Commande Client', description: 'Prise et validation de commande' },
+  { id: 'sp2', name: 'Facturation', description: 'Émission des factures clients' },
+  { id: 'sp3', name: 'Expédition', description: 'Préparation et envoi des colis' },
 ];
 
 const API_BASE_URL = 'http://localhost:3001/api/v1';
@@ -125,6 +125,15 @@ const apiFetch = async (path: string, options: RequestInit = {}) => {
     },
   });
 };
+
+// const getAuthHeaders = () => {
+//   const token = localStorage.getItem('accessToken');
+//   return {
+//     'Content-Type': 'application/json',
+//     Authorization: `Bearer ${token}`,
+//   };
+// };
+
 
 interface JwtPayload {
   id: string | number;
@@ -155,11 +164,11 @@ export const api = {
 
     const user = decodeJwt(data.accessToken);
     const role: UserRole =
-    Array.isArray(user.roles) &&
-    user.roles.length > 0 &&
-    typeof user.roles[0] === 'string'
-      ? (user.roles[0].toUpperCase() as UserRole)
-      : 'USER';
+      Array.isArray(user.roles) &&
+        user.roles.length > 0 &&
+        typeof user.roles[0] === 'string'
+        ? (user.roles[0].toUpperCase() as UserRole)
+        : 'USER';
 
     console.log(user);
     return {
@@ -216,28 +225,28 @@ export const api = {
 
   updateIncident: async (id: string, updates: Partial<Incident>): Promise<Incident> => {
     return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
-            if (index !== -1) {
-                MOCK_INCIDENTS[index] = { ...MOCK_INCIDENTS[index], ...updates };
-                resolve(MOCK_INCIDENTS[index]);
-            } else {
-                reject("Incident not found");
-            }
-        }, MOCK_DELAY);
+      setTimeout(() => {
+        const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
+        if (index !== -1) {
+          MOCK_INCIDENTS[index] = { ...MOCK_INCIDENTS[index], ...updates };
+          resolve(MOCK_INCIDENTS[index]);
+        } else {
+          reject("Incident not found");
+        }
+      }, MOCK_DELAY);
     });
   },
 
   deleteIncident: async (id: string): Promise<void> => {
-      return new Promise((resolve) => {
-          setTimeout(() => {
-              const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
-              if (index !== -1) {
-                  MOCK_INCIDENTS.splice(index, 1);
-              }
-              resolve();
-          }, MOCK_DELAY);
-      });
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
+        if (index !== -1) {
+          MOCK_INCIDENTS.splice(index, 1);
+        }
+        resolve();
+      }, MOCK_DELAY);
+    });
   },
 
   getTasks: async (incidentId: string): Promise<Task[]> => {
@@ -251,52 +260,52 @@ export const api = {
   },
 
   createTask: async (incidentId: string, taskData: Partial<Task>): Promise<Task> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const newTask: Task = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    title: taskData.title || 'Nouvelle tâche',
-                    description: taskData.description,
-                    status: 'TODO',
-                    assignedTo: 'Unassigned',
-                    dueDate: new Date().toISOString()
-                };
-                MOCK_TASKS.push(newTask);
-                resolve(newTask);
-            }, MOCK_DELAY);
-        });
-    },
-
-    updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
-      return new Promise((resolve, reject) => {
-          setTimeout(() => {
-              const index = MOCK_TASKS.findIndex(t => t.id === taskId);
-              if (index !== -1) {
-                  MOCK_TASKS[index] = { ...MOCK_TASKS[index], ...updates };
-                  resolve(MOCK_TASKS[index]);
-              } else {
-                  reject("Task not found");
-              }
-          }, MOCK_DELAY);
-      }); 
-    },
-    
-    deleteTask: async (taskId: string): Promise<void> => {
     return new Promise((resolve) => {
-        setTimeout(() => {
-            const index = MOCK_TASKS.findIndex(t => t.id === taskId);
-            if (index !== -1) {
-                MOCK_TASKS.splice(index, 1);
-            }
-            resolve();
-        }, MOCK_DELAY);
+      setTimeout(() => {
+        const newTask: Task = {
+          id: Math.random().toString(36).substr(2, 9),
+          title: taskData.title || 'Nouvelle tâche',
+          description: taskData.description,
+          status: 'TODO',
+          assignedTo: 'Unassigned',
+          dueDate: new Date().toISOString()
+        };
+        MOCK_TASKS.push(newTask);
+        resolve(newTask);
+      }, MOCK_DELAY);
+    });
+  },
+
+  updateTask: async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const index = MOCK_TASKS.findIndex(t => t.id === taskId);
+        if (index !== -1) {
+          MOCK_TASKS[index] = { ...MOCK_TASKS[index], ...updates };
+          resolve(MOCK_TASKS[index]);
+        } else {
+          reject("Task not found");
+        }
+      }, MOCK_DELAY);
+    });
+  },
+
+  deleteTask: async (taskId: string): Promise<void> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const index = MOCK_TASKS.findIndex(t => t.id === taskId);
+        if (index !== -1) {
+          MOCK_TASKS.splice(index, 1);
+        }
+        resolve();
+      }, MOCK_DELAY);
     });
   },
 
   getAllTasks: async (): Promise<Task[]> => {
-      return new Promise((resolve) => {
-          setTimeout(() => resolve(MOCK_TASKS), MOCK_DELAY);
-      });
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(MOCK_TASKS), MOCK_DELAY);
+    });
   },
 
   createIncident: async (data: Partial<Incident>): Promise<Incident> => {
@@ -323,147 +332,314 @@ export const api = {
     });
   },
 
- createSite: async (data: Partial<Site>): Promise<Site> => {
-      return new Promise((resolve) => {
-          setTimeout(() => {
-              const newSite: Site = {
-                  id: Math.random().toString(36).substr(2, 9),
-                  name: data.name || 'Nouveau Site'
-              };
-              MOCK_SITES.push(newSite);
-              resolve(newSite);
-          }, MOCK_DELAY);
-      });
+  getSites: async (): Promise<Site[]> => {
+    const response = await apiFetch('/sites', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des sites');
+    }
+
+    return response.json();
   },
 
-  updateSite: async (id: string, updates: Partial<Site>): Promise<Site> => {
-      return new Promise((resolve, reject) => {
-          setTimeout(() => {
-              const index = MOCK_SITES.findIndex(s => s.id === id);
-              if (index !== -1) {
-                  MOCK_SITES[index] = { ...MOCK_SITES[index], ...updates };
-                  resolve(MOCK_SITES[index]);
-              } else {
-                  reject("Site not found");
-              }
-          }, MOCK_DELAY);
-      });
+
+  createSite: async (payload: { name: string }): Promise<Site> => {
+    const response = await apiFetch('/sites', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur création site');
+    }
+
+    return response.json();
+  },
+
+  getSiteById: async (id: string): Promise<Site> => {
+    const response = await apiFetch(`/sites/${id}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Site introuvable');
+    }
+
+    return response.json();
+  },
+
+  updateSite: async (id: string, payload: { name: string }): Promise<Site> => {
+    const response = await apiFetch(`/sites/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur modification site');
+    }
+
+    return response.json();
   },
 
   deleteSite: async (id: string): Promise<void> => {
-      return new Promise((resolve) => {
-          setTimeout(() => {
-              const index = MOCK_SITES.findIndex(s => s.id === id);
-              if (index !== -1) {
-                  MOCK_SITES.splice(index, 1);
-              }
-              resolve();
-          }, MOCK_DELAY);
-      });
+    const response = await apiFetch(`/sites/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur suppression site');
+    }
+
+    return response.json();
   },
 
-// --- SubCategory Methods ---
+  // --- Category Methods ---
+  getCategories: async (): Promise<Category[]> => {
+    const response = await apiFetch('/categories', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des catégories');
+    }
+
+    return response.json();
+  },
+  
+  getCategoryById: async (id: string): Promise<Category | undefined> => {
+    const response = await apiFetch(`/categories/${id}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Catégorie introuvable');
+    }
+
+    return response.json();
+  },
+  createCategory: async (data: Partial<Category>): Promise<Category> => {
+    const response = await apiFetch('/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur création catégorie');
+    }
+
+    return response.json();
+  },
+  updateCategory: async (id: string, data: Partial<Category>): Promise<Category> => {
+    const response = await apiFetch(`/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur modification catégorie');
+    }
+
+    return response.json();
+  },
+  deleteCategory: async (id: string): Promise<void> => {
+    const response = await apiFetch(`/categories/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur suppression catégorie');
+    }
+
+    return response.json();
+  },
+
+
+  // --- SubCategory Methods ---
   getSubCategories: async (): Promise<SubCategory[]> => {
-    return new Promise(resolve => setTimeout(() => resolve(MOCK_SUB_CATEGORIES), MOCK_DELAY));
+    const response = await apiFetch('/subcategories', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des sous-catégories');
+    }
+
+    return response.json();
   },
   getSubCategoryById: async (id: string): Promise<SubCategory | undefined> => {
-    return new Promise(resolve => setTimeout(() => resolve(MOCK_SUB_CATEGORIES.find(c => c.id === id)), MOCK_DELAY));
+    const response = await apiFetch(`/subcategories/${id}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Sous-catégorie introuvable');
+    }
+
+    return response.json();
   },
   createSubCategory: async (data: Partial<SubCategory>): Promise<SubCategory> => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const newItem: SubCategory = { id: Math.random().toString(36).substr(2, 9), name: data.name || '', description: data.description };
-            MOCK_SUB_CATEGORIES.push(newItem);
-            resolve(newItem);
-        }, MOCK_DELAY);
+    const response = await apiFetch('/subcategories', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
+
+    if (!response.ok) {
+      throw new Error('Erreur création sous-catégorie');
+    }
+
+    return response.json();
   },
   updateSubCategory: async (id: string, updates: Partial<SubCategory>): Promise<SubCategory> => {
-      return new Promise((resolve, reject) => {
-          setTimeout(() => {
-              const index = MOCK_SUB_CATEGORIES.findIndex(c => c.id === id);
-              if (index !== -1) { MOCK_SUB_CATEGORIES[index] = { ...MOCK_SUB_CATEGORIES[index], ...updates }; resolve(MOCK_SUB_CATEGORIES[index]); }
-              else reject("Not found");
-          }, MOCK_DELAY);
-      });
+    const response = await apiFetch(`/subcategories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur modification sous-catégorie');
+    }
+
+    return response.json();
   },
   deleteSubCategory: async (id: string): Promise<void> => {
-      return new Promise(resolve => {
-          setTimeout(() => {
-              const index = MOCK_SUB_CATEGORIES.findIndex(c => c.id === id);
-              if (index !== -1) MOCK_SUB_CATEGORIES.splice(index, 1);
-              resolve();
-          }, MOCK_DELAY);
-      });
+    const response = await apiFetch(`/subcategories/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur suppression sous-catégorie');
+    }
+
+    return response.json();
   },
 
   // --- Process Methods ---
   getProcesses: async (): Promise<Process[]> => {
-    return new Promise(resolve => setTimeout(() => resolve(MOCK_PROCESSES), MOCK_DELAY));
+    const response = await apiFetch('/processes', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des processus');
+    }
+
+    return response.json();
   },
   getProcessById: async (id: string): Promise<Process | undefined> => {
-    return new Promise(resolve => setTimeout(() => resolve(MOCK_PROCESSES.find(c => c.id === id)), MOCK_DELAY));
+    const response = await apiFetch(`/processes/${id}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Processus introuvable');
+    }
+
+    return response.json();
   },
   createProcess: async (data: Partial<Process>): Promise<Process> => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const newItem: Process = { id: Math.random().toString(36).substr(2, 9), name: data.name || '', description: data.description };
-            MOCK_PROCESSES.push(newItem);
-            resolve(newItem);
-        }, MOCK_DELAY);
+    const response = await apiFetch('/processes', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
+
+    if (!response.ok) {
+      throw new Error('Erreur création processus');
+    }
+
+    return response.json();
   },
   updateProcess: async (id: string, updates: Partial<Process>): Promise<Process> => {
-      return new Promise((resolve, reject) => {
-          setTimeout(() => {
-              const index = MOCK_PROCESSES.findIndex(c => c.id === id);
-              if (index !== -1) { MOCK_PROCESSES[index] = { ...MOCK_PROCESSES[index], ...updates }; resolve(MOCK_PROCESSES[index]); }
-              else reject("Not found");
-          }, MOCK_DELAY);
-      });
+    const response = await apiFetch(`/processes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur modification processus');
+    }
+
+    return response.json();
   },
   deleteProcess: async (id: string): Promise<void> => {
-      return new Promise(resolve => {
-          setTimeout(() => {
-              const index = MOCK_PROCESSES.findIndex(c => c.id === id);
-              if (index !== -1) MOCK_PROCESSES.splice(index, 1);
-              resolve();
-          }, MOCK_DELAY);
-      });
+    const response = await apiFetch(`/processes/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur suppression processus');
+    }
+
+    return response.json();
   },
 
   // --- SubProcess Methods ---
   getSubProcesses: async (): Promise<SubProcess[]> => {
-    return new Promise(resolve => setTimeout(() => resolve(MOCK_SUB_PROCESSES), MOCK_DELAY));
-  },
-  getSubProcessById: async (id: string): Promise<SubProcess | undefined> => {
-    return new Promise(resolve => setTimeout(() => resolve(MOCK_SUB_PROCESSES.find(c => c.id === id)), MOCK_DELAY));
-  },
-  createSubProcess: async (data: Partial<SubProcess>): Promise<SubProcess> => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const newItem: SubProcess = { id: Math.random().toString(36).substr(2, 9), name: data.name || '', description: data.description };
-            MOCK_SUB_PROCESSES.push(newItem);
-            resolve(newItem);
-        }, MOCK_DELAY);
+    const response = await apiFetch('/subprocesses', {
+      method: 'GET',
     });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des sous-processus');
+    }
+
+    return response.json();
   },
-  updateSubProcess: async (id: string, updates: Partial<SubProcess>): Promise<SubProcess> => {
-      return new Promise((resolve, reject) => {
-          setTimeout(() => {
-              const index = MOCK_SUB_PROCESSES.findIndex(c => c.id === id);
-              if (index !== -1) { MOCK_SUB_PROCESSES[index] = { ...MOCK_SUB_PROCESSES[index], ...updates }; resolve(MOCK_SUB_PROCESSES[index]); }
-              else reject("Not found");
-          }, MOCK_DELAY);
-      });
+
+  getSubProcessById: async (id: string): Promise<SubProcess | undefined> => {
+    const response = await apiFetch(`/subprocess/${id}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Processus introuvable');
+    }
+
+    return response.json();
+
   },
+
+  createSubProcess: async (
+    data: Partial<SubProcess>
+  ): Promise<SubProcess> => {
+    const response = await apiFetch('/sub-processes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur création du sous-processus');
+    }
+
+    return response.json();
+  },
+
+  updateSubProcess: async (
+    id: string,
+    updates: Partial<SubProcess>
+  ): Promise<SubProcess> => {
+    const response = await apiFetch(`/sub-processes/${id}`, {
+      method: 'PUT', // ou PATCH selon ton API
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur mise à jour du sous-processus');
+    }
+
+    return response.json();
+  },
+
   deleteSubProcess: async (id: string): Promise<void> => {
-      return new Promise(resolve => {
-          setTimeout(() => {
-              const index = MOCK_SUB_PROCESSES.findIndex(c => c.id === id);
-              if (index !== -1) MOCK_SUB_PROCESSES.splice(index, 1);
-              resolve();
-          }, MOCK_DELAY);
-      });
+    const response = await apiFetch(`/subprocesses/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur suppression sous-processus');
+    }
+
+    return response.json();
   },
 };
