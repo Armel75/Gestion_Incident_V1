@@ -142,7 +142,7 @@ interface JwtPayload {
   roles?: string[];
 }
 
-function decodeJwt(token: string): JwtPayload {
+export function decodeJwt(token: string): JwtPayload {
   const payload = token.split('.')[1];
   return JSON.parse(atob(payload));
 }
