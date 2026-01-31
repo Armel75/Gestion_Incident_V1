@@ -407,7 +407,7 @@ export const api = {
 
     return response.json();
   },
-  
+
   getCategoryById: async (id: string): Promise<Category | undefined> => {
     const response = await apiFetch(`/categories/${id}`, {
       method: 'GET',
@@ -458,7 +458,7 @@ export const api = {
 
   // --- SubCategory Methods ---
   getSubCategories: async (): Promise<SubCategory[]> => {
-    const response = await apiFetch('/subcategories', {
+    const response = await apiFetch('/sub-categories', {
       method: 'GET',
     });
 
@@ -469,7 +469,7 @@ export const api = {
     return response.json();
   },
   getSubCategoryById: async (id: string): Promise<SubCategory | undefined> => {
-    const response = await apiFetch(`/subcategories/${id}`, {
+    const response = await apiFetch(`/sub-categories/${id}`, {
       method: 'GET',
     });
 
@@ -480,7 +480,7 @@ export const api = {
     return response.json();
   },
   createSubCategory: async (data: Partial<SubCategory>): Promise<SubCategory> => {
-    const response = await apiFetch('/subcategories', {
+    const response = await apiFetch('/sub-categories', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -492,7 +492,7 @@ export const api = {
     return response.json();
   },
   updateSubCategory: async (id: string, updates: Partial<SubCategory>): Promise<SubCategory> => {
-    const response = await apiFetch(`/subcategories/${id}`, {
+    const response = await apiFetch(`/sub-categories/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
@@ -504,7 +504,7 @@ export const api = {
     return response.json();
   },
   deleteSubCategory: async (id: string): Promise<void> => {
-    const response = await apiFetch(`/subcategories/${id}`, {
+    const response = await apiFetch(`/sub-categories/${id}`, {
       method: 'DELETE',
     });
 
@@ -576,7 +576,7 @@ export const api = {
 
   // --- SubProcess Methods ---
   getSubProcesses: async (): Promise<SubProcess[]> => {
-    const response = await apiFetch('/subprocesses', {
+    const response = await apiFetch('/sub-processes', {
       method: 'GET',
     });
 
@@ -588,7 +588,7 @@ export const api = {
   },
 
   getSubProcessById: async (id: string): Promise<SubProcess | undefined> => {
-    const response = await apiFetch(`/subprocess/${id}`, {
+    const response = await apiFetch(`/sub-processes/${id}`, {
       method: 'GET',
     });
 
@@ -632,7 +632,7 @@ export const api = {
   },
 
   deleteSubProcess: async (id: string): Promise<void> => {
-    const response = await apiFetch(`/subprocesses/${id}`, {
+    const response = await apiFetch(`/sub-processes/${id}`, {
       method: 'DELETE',
     });
 
