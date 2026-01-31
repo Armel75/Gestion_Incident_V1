@@ -1,3 +1,4 @@
+
 import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess } from '../types';
 import { MOCK_DELAY } from '../constants';
 
@@ -93,9 +94,9 @@ let MOCK_CATEGORIES: Category[] = [
 ];
 
 let MOCK_SUB_CATEGORIES: SubCategory[] = [
-    { id: 'sc1', name: 'Ordinateur', description: 'Poste de travail fixe ou portable' },
-    { id: 'sc2', name: 'Imprimante', description: 'Imprimantes réseau et locales' },
-    { id: 'sc3', name: 'OS', description: 'Système d\'exploitation Windows/Linux/Mac' },
+    { id: 'sc1', name: 'Ordinateur', description: 'Poste de travail fixe ou portable', categoryId: 'c1' },
+    { id: 'sc2', name: 'Imprimante', description: 'Imprimantes réseau et locales', categoryId: 'c1' },
+    { id: 'sc3', name: 'OS', description: 'Système d\'exploitation Windows/Linux/Mac', categoryId: 'c2' },
 ];
 
 let MOCK_PROCESSES: Process[] = [
@@ -105,9 +106,9 @@ let MOCK_PROCESSES: Process[] = [
 ];
 
 let MOCK_SUB_PROCESSES: SubProcess[] = [
-    { id: 'sp1', name: 'Commande Client', description: 'Prise et validation de commande' },
-    { id: 'sp2', name: 'Facturation', description: 'Émission des factures clients' },
-    { id: 'sp3', name: 'Expédition', description: 'Préparation et envoi des colis' },
+    { id: 'sp1', name: 'Commande Client', description: 'Prise et validation de commande', processId: 'p1' },
+    { id: 'sp2', name: 'Facturation', description: 'Émission des factures clients', processId: 'p1' },
+    { id: 'sp3', name: 'Expédition', description: 'Préparation et envoi des colis', processId: 'p3' },
 ];
 
 export const api = {
@@ -366,7 +367,12 @@ export const api = {
   createSubCategory: async (data: Partial<SubCategory>): Promise<SubCategory> => {
     return new Promise(resolve => {
         setTimeout(() => {
-            const newItem: SubCategory = { id: Math.random().toString(36).substr(2, 9), name: data.name || '', description: data.description };
+            const newItem: SubCategory = { 
+              id: Math.random().toString(36).substr(2, 9), 
+              name: data.name || '', 
+              description: data.description,
+              categoryId: data.categoryId || '' 
+            };
             MOCK_SUB_CATEGORIES.push(newItem);
             resolve(newItem);
         }, MOCK_DELAY);
@@ -436,7 +442,12 @@ export const api = {
   createSubProcess: async (data: Partial<SubProcess>): Promise<SubProcess> => {
     return new Promise(resolve => {
         setTimeout(() => {
-            const newItem: SubProcess = { id: Math.random().toString(36).substr(2, 9), name: data.name || '', description: data.description };
+            const newItem: SubProcess = { 
+              id: Math.random().toString(36).substr(2, 9), 
+              name: data.name || '', 
+              description: data.description,
+              processId: data.processId || ''
+            };
             MOCK_SUB_PROCESSES.push(newItem);
             resolve(newItem);
         }, MOCK_DELAY);

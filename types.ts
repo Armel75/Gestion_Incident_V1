@@ -1,3 +1,4 @@
+
 // User Roles
 export type UserRole = 'USER' | 'ARBITRE' | 'ADMIN' | 'MANAGER';
 
@@ -66,6 +67,7 @@ export interface SubCategory {
   id: string;
   name: string;
   description?: string;
+  categoryId: string;
 }
 
 export interface Process {
@@ -78,6 +80,7 @@ export interface SubProcess {
   id: string;
   name: string;
   description?: string;
+  processId: string;
 }
 
 // API Response Wrappers
