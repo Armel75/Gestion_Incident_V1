@@ -1,11 +1,13 @@
+
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { SubCategory } from '../types';
+import { SubCategory, Category } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Plus } from 'lucide-react';
 
 export const SubCategoryList: React.FC = () => {
   const [items, setItems] = useState<SubCategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -15,16 +17,26 @@ export const SubCategoryList: React.FC = () => {
 
   const fetchItems = async () => {
     setLoading(true);
-    const data = await api.getSubCategories();
+    const [data, cats] = await Promise.all([
+        api.getSubCategories(),
+        api.getCategories()
+    ]);
     setItems(data);
+    setCategories(cats);
     setLoading(false);
   };
 
   const handleDelete = async (id: string, name: string) => {
       if (window.confirm(`Êtes-vous sûr de vouloir supprimer la sous-catégorie "${name}" ?`)) {
           await api.deleteSubCategory(id);
-          fetchItems();
+          const data = await api.getSubCategories();
+          setItems(data);
       }
+  };
+
+  const getCategoryName = (id: string) => {
+      const cat = categories.find(c => c.id === id);
+      return cat ? cat.name : '-';
   };
 
   return (
@@ -57,6 +69,7 @@ export const SubCategoryList: React.FC = () => {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="bg-slate-50 dark:bg-slate-950">
                         <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Catégorie</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Désignation</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-48">Actions</th>
@@ -65,13 +78,18 @@ export const SubCategoryList: React.FC = () => {
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
                         {items.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="px-6 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                                <td colSpan={4} className="px-6 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
                                     Aucune sous-catégorie configurée.
                                 </td>
                             </tr>
                         ) : (
                             items.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                          {getCategoryName(item.categoryId)}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">
                                         {item.name}
                                     </td>

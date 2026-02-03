@@ -1,18 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
-interface MultiSelectProps {
+interface SearchSelectProps {
   label?: string;
   options: string[];
-  selected: string[];
+  value: string;
   required?: boolean;
   placeholder?: string;
-  onChange: (values: string[]) => void;
+  onChange: (value: string) => void;
 }
 
-export const MultiSelect: React.FC<MultiSelectProps> = ({
+export const SearchSelect: React.FC<SearchSelectProps> = ({
   label,
   options,
-  selected,
+  value,
   onChange,
   required,
   placeholder = 'Rechercher...'
@@ -21,20 +21,21 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const filteredOptions = useMemo(() => {
-    return options
-      .filter(o => !selected.includes(o))
-      .filter(o => o.toLowerCase().includes(query.toLowerCase()));
-  }, [options, selected, query]);
+//   const filteredOptions = useMemo(() => {
+//     return options.filter(o =>
+//       o.toLowerCase().includes(query.toLowerCase())
+//     );
+//   }, [options, query]);
+const filteredOptions = useMemo(() => {
+  return options
+    .filter((o): o is string => typeof o === 'string' && o.trim() !== '')
+    .filter(o => o.toLowerCase().includes(query.toLowerCase()));
+}, [options, query]);
 
-  const addValue = (value: string) => {
-    onChange([...selected, value]);
+  const selectValue = (val: string) => {
+    onChange(val);
     setQuery('');
-    setOpen(true);
-  };
-
-  const removeValue = (value: string) => {
-    onChange(selected.filter(v => v !== value));
+    setOpen(false);
   };
 
   useEffect(() => {
@@ -55,31 +56,9 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         </label>
       )}
 
-      <div className="flex flex-wrap gap-1 mb-1">
-        {selected.map(val => (
-          <span
-            key={val}
-            className="
-              px-2 py-1 text-sm rounded flex items-center gap-1
-              bg-slate-200 text-slate-900
-              dark:bg-slate-700 dark:text-white
-            "
-          >
-            {val}
-            <button
-              type="button"
-              onClick={() => removeValue(val)}
-              className="text-xs hover:opacity-70"
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-      </div>
-
       <input
         type="text"
-        value={query}
+        value={open ? query : value}
         onFocus={() => setOpen(true)}
         onChange={e => setQuery(e.target.value)}
         placeholder={placeholder}
@@ -102,7 +81,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
           {filteredOptions.map(option => (
             <li
               key={option}
-              onClick={() => addValue(option)}
+              onClick={() => selectValue(option)}
               className="
                 cursor-pointer px-3 py-2 text-sm
                 text-slate-900 hover:bg-slate-100

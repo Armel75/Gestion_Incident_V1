@@ -1,31 +1,42 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { ArrowLeft, Save } from 'lucide-react';
+import { Category } from '../types';
 
 export const NewSubCategory: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const isEditMode = !!id;
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    categoryId: ''
   });
 
   useEffect(() => {
-    if (isEditMode && id) {
-        const fetchItem = async () => {
+    const fetchData = async () => {
+        const cats = await api.getCategories();
+        setCategories(cats);
+        
+        if (isEditMode && id) {
             const item = await api.getSubCategoryById(id);
             if (item) {
-                setFormData({ name: item.name, description: item.description || '' });
+                setFormData({ 
+                    name: item.name, 
+                    description: item.description || '', 
+                    categoryId: item.categoryId 
+                });
             }
-        };
-        fetchItem();
-    }
+        }
+    };
+    fetchData();
   }, [id, isEditMode]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -35,9 +46,17 @@ export const NewSubCategory: React.FC = () => {
     setLoading(true);
     try {
         if (isEditMode && id) {
-             await api.updateSubCategory(id, { name: formData.name, description: formData.description });
+             await api.updateSubCategory(id, { 
+                 name: formData.name, 
+                 description: formData.description,
+                 categoryId: formData.categoryId
+             });
         } else {
-             await api.createSubCategory({ name: formData.name, description: formData.description });
+             await api.createSubCategory({ 
+                 name: formData.name, 
+                 description: formData.description,
+                 categoryId: formData.categoryId
+             });
         }
         navigate('/settings/sub-categories');
     } catch (error) {
@@ -77,6 +96,22 @@ export const NewSubCategory: React.FC = () => {
       <div className="flex-1 overflow-auto p-6 lg:p-10 max-w-2xl mx-auto w-full">
           <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
               <div className="space-y-6">
+                  <div>
+                      <label htmlFor="categoryId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Catégorie <span className="text-red-500">*</span></label>
+                      <select
+                        id="categoryId"
+                        name="categoryId"
+                        required
+                        value={formData.categoryId}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                      >
+                        <option value="">Sélectionner une catégorie...</option>
+                        {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                  </div>
                   <div>
                       <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Désignation <span className="text-red-500">*</span></label>
                       <input 

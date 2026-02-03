@@ -93,46 +93,50 @@ let MOCK_CATEGORIES: Category[] = [
   { id: 'c3', name: 'Réseau / Network', description: 'Connectivité et infrastructure réseau' },
 ];
 
-let MOCK_SUB_CATEGORIES: SubCategory[] = [
-  { id: 'sc1', name: 'Ordinateur', description: 'Poste de travail fixe ou portable' },
-  { id: 'sc2', name: 'Imprimante', description: 'Imprimantes réseau et locales' },
-  { id: 'sc3', name: 'OS', description: 'Système d\'exploitation Windows/Linux/Mac' },
-];
-
-let MOCK_PROCESSES: Process[] = [
-  { id: 'p1', name: 'Ventes', description: 'Processus commerciaux' },
-  { id: 'p2', name: 'Achats', description: 'Gestion des fournisseurs et commandes' },
-  { id: 'p3', name: 'Logistique', description: 'Gestion des stocks et expéditions' },
-];
-
-let MOCK_SUB_PROCESSES: SubProcess[] = [
-  { id: 'sp1', name: 'Commande Client', description: 'Prise et validation de commande' },
-  { id: 'sp2', name: 'Facturation', description: 'Émission des factures clients' },
-  { id: 'sp3', name: 'Expédition', description: 'Préparation et envoi des colis' },
-];
 
 const API_BASE_URL = 'http://localhost:3001/api/v1';
 
-const apiFetch = async (path: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('accessToken');
+  // const apiFetch = async (path: string, options: RequestInit = {}) => {
+  //   const token = localStorage.getItem('accessToken');
 
-  return fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      'Content-Type': 'application/json',
+  //   const isFormData = options.body instanceof FormData;
+
+  //   const headers: HeadersInit = {
+  //     ...(options.headers || {}),
+  //     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  //   };
+
+  //   // ❗ NE PAS définir Content-Type si FormData
+  //   if (!isFormData) {
+  //     headers['Content-Type'] = 'application/json';
+  //   }
+
+  //   return fetch(`${API_BASE_URL}${path}`, {
+  //     ...options,
+  //     headers,
+  //   });
+  // };
+
+  const apiFetch = async (path: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('accessToken');
+
+    const headers: HeadersInit = {
       Authorization: token ? `Bearer ${token}` : '',
-    },
-  });
-};
+    };
 
-// const getAuthHeaders = () => {
-//   const token = localStorage.getItem('accessToken');
-//   return {
-//     'Content-Type': 'application/json',
-//     Authorization: `Bearer ${token}`,
-//   };
-// };
+    // ⚠️ Ne pas définir Content-Type si FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    return fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...headers,
+        ...(options.headers || {}),
+      },
+    });
+  };
 
 
 interface JwtPayload {
@@ -209,44 +213,24 @@ export const api = {
     });
   },
 
-  getIncidents: async () => {
-    // const res = await apiFetch('/incidents');
-    // return res.json();
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_INCIDENTS), MOCK_DELAY);
+  // getIncidents: async () => {
+  //   // const res = await apiFetch('/incidents');
+  //   // return res.json();
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => resolve(MOCK_INCIDENTS), MOCK_DELAY);
+  //   });
+  // },
+  getIncidents: async (): Promise<Incident[]> => {
+    const response = await apiFetch('/incidents', {
+      method: 'GET',
     });
-  },
 
-  getIncidentById: async (id: string): Promise<Incident | undefined> => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_INCIDENTS.find(i => i.id === id)), MOCK_DELAY);
-    });
-  },
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur lors du chargement des incidents');
+    }
 
-  updateIncident: async (id: string, updates: Partial<Incident>): Promise<Incident> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
-        if (index !== -1) {
-          MOCK_INCIDENTS[index] = { ...MOCK_INCIDENTS[index], ...updates };
-          resolve(MOCK_INCIDENTS[index]);
-        } else {
-          reject("Incident not found");
-        }
-      }, MOCK_DELAY);
-    });
-  },
-
-  deleteIncident: async (id: string): Promise<void> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const index = MOCK_INCIDENTS.findIndex(i => i.id === id);
-        if (index !== -1) {
-          MOCK_INCIDENTS.splice(index, 1);
-        }
-        resolve();
-      }, MOCK_DELAY);
-    });
+    return response.json();
   },
 
   getTasks: async (incidentId: string): Promise<Task[]> => {
@@ -308,29 +292,131 @@ export const api = {
     });
   },
 
-  createIncident: async (data: Partial<Incident>): Promise<Incident> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newIncident: Incident = {
-          id: Math.random().toString(36).substr(2, 9),
-          reference: `INC-2023-${Math.floor(Math.random() * 1000)}`,
-          title: data.title || 'Nouvel incident',
-          status: 'OPEN',
-          priority: data.priority || 'MEDIUM',
-          site: data.site || 'Unknown',
-          service: data.service || 'General',
-          category: data.category || 'Other',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: data.dueDate || new Date().toISOString(),
-          description: data.description || '',
-          assignedTo: undefined
-        };
-        MOCK_INCIDENTS.unshift(newIncident);
-        resolve(newIncident);
-      }, MOCK_DELAY * 2);
+  // createIncident: async (data: Partial<Incident>, attachments: any): Promise<Incident> => {
+  //   const response = await apiFetch('/incidents', {
+  //     method: 'POST',
+  //     body: JSON.stringify(data),
+  //   });
+
+  //   if (!response.ok) {
+  //     const error = await response.json();
+  //     throw new Error(error?.message || 'Erreur lors de la création de l’incident');
+  //   }
+
+  //   return response.json();
+  // },
+
+  // createIncident: async (formData: FormData): Promise<Incident> => {
+  //   const response = await apiFetch('/incidents', {
+  //     method: 'POST',
+  //     body: formData, // 🔑 PAS de JSON.stringify
+  //   });
+
+  //   if (!response.ok) {
+  //     const error = await response.json();
+  //     throw new Error(error?.message || 'Erreur lors de la création de l’incident');
+  //   }
+
+  //   return response.json();
+  // },
+
+  createIncident: async (formData: FormData): Promise<Incident> => {
+    const response = await apiFetch('/incidents', {
+      method: 'POST',
+      body: formData, // PAS de JSON.stringify
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur lors de la création de l’incident');
+    }
+
+    return response.json();
   },
+
+
+  getIncidentById: async (id: string): Promise<Incident> => {
+    const response = await apiFetch(`/incidents/${id}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Incident introuvable');
+    }
+
+    return response.json();
+  },
+
+  // updateIncident: async (
+  //   id: string,
+  //   updates: Partial<Incident>
+  // ): Promise<Incident> => {
+  //   const response = await apiFetch(`/incidents/${id}`, {
+  //     method: 'PATCH',
+  //     body: JSON.stringify(updates),
+  //   });
+
+  //   if (!response.ok) {
+  //     const error = await response.json();
+  //     throw new Error(error?.message || 'Erreur lors de la mise à jour de l’incident');
+  //   }
+
+  //   return response.json();
+  // },
+
+  updateIncident: async (
+    id: string,
+    formData: FormData
+  ): Promise<Incident> => {
+    const response = await apiFetch(`/incidents/${id}`, {
+      method: 'PATCH',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur lors de la mise à jour de l’incident');
+    }
+
+    return response.json();
+  },
+
+
+  deleteIncident: async (id: string): Promise<void> => {
+    const response = await apiFetch(`/incidents/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur lors de la suppression de l’incident');
+    }
+  },
+
+  // createIncident: async (data: Partial<Incident>): Promise<Incident> => {
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       const newIncident: Incident = {
+  //         id: Math.random().toString(36).substr(2, 9),
+  //         reference: `INC-2023-${Math.floor(Math.random() * 1000)}`,
+  //         title: data.title || 'Nouvel incident',
+  //         status: 'OPEN',
+  //         priority: data.priority || 'MEDIUM',
+  //         site: data.site || 'Unknown',
+  //         service: data.service || 'General',
+  //         category: data.category || 'Other',
+  //         createdAt: new Date().toISOString(),
+  //         updatedAt: new Date().toISOString(),
+  //         dueDate: data.dueDate || new Date().toISOString(),
+  //         description: data.description || '',
+  //         assignedTo: undefined
+  //       };
+  //       MOCK_INCIDENTS.unshift(newIncident);
+  //       resolve(newIncident);
+  //     }, MOCK_DELAY * 2);
+  //   });
+  // },
 
   getSites: async (): Promise<Site[]> => {
     const response = await apiFetch('/sites', {
@@ -642,4 +728,17 @@ export const api = {
 
     return response.json();
   },
+
+  getUsers: async (): Promise<User[]> => {
+    const response = await apiFetch('/users', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des utilisateurs');
+    }
+
+    return response.json();
+  },
+
 };

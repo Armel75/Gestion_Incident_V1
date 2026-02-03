@@ -1,31 +1,42 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { ArrowLeft, Save } from 'lucide-react';
+import { Process } from '../types';
 
 export const NewSubProcess: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [processes, setProcesses] = useState<Process[]>([]);
   const isEditMode = !!id;
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    processId: ''
   });
 
   useEffect(() => {
-    if (isEditMode && id) {
-        const fetchItem = async () => {
+    const fetchData = async () => {
+        const procs = await api.getProcesses();
+        setProcesses(procs);
+
+        if (isEditMode && id) {
             const item = await api.getSubProcessById(id);
             if (item) {
-                setFormData({ name: item.name, description: item.description || '' });
+                setFormData({ 
+                    name: item.name, 
+                    description: item.description || '',
+                    processId: item.processId 
+                });
             }
-        };
-        fetchItem();
-    }
+        }
+    };
+    fetchData();
   }, [id, isEditMode]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -35,9 +46,17 @@ export const NewSubProcess: React.FC = () => {
     setLoading(true);
     try {
         if (isEditMode && id) {
-             await api.updateSubProcess(id, { name: formData.name, description: formData.description });
+             await api.updateSubProcess(id, { 
+                 name: formData.name, 
+                 description: formData.description,
+                 processId: formData.processId
+             });
         } else {
-             await api.createSubProcess({ name: formData.name, description: formData.description });
+             await api.createSubProcess({ 
+                 name: formData.name, 
+                 description: formData.description,
+                 processId: formData.processId
+             });
         }
         navigate('/settings/sub-processes');
     } catch (error) {
@@ -77,6 +96,22 @@ export const NewSubProcess: React.FC = () => {
       <div className="flex-1 overflow-auto p-6 lg:p-10 max-w-2xl mx-auto w-full">
           <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
               <div className="space-y-6">
+                  <div>
+                      <label htmlFor="processId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Processus <span className="text-red-500">*</span></label>
+                      <select
+                        id="processId"
+                        name="processId"
+                        required
+                        value={formData.processId}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                      >
+                        <option value="">Sélectionner un processus...</option>
+                        {processes.map((proc) => (
+                            <option key={proc.id} value={proc.id}>{proc.name}</option>
+                        ))}
+                      </select>
+                  </div>
                   <div>
                       <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Désignation <span className="text-red-500">*</span></label>
                       <input 

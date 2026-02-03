@@ -66,6 +66,7 @@ export interface SubCategory {
   id: string;
   name: string;
   description?: string;
+  categoryId: string;
 }
 
 export interface Process {
@@ -78,6 +79,7 @@ export interface SubProcess {
   id: string;
   name: string;
   description?: string;
+  processId: string;
 }
 
 // API Response Wrappers
