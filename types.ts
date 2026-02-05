@@ -12,21 +12,30 @@ export interface User {
 // Incident Types
 export type IncidentStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type Urgency = 'Faible' | 'Moyenne' | 'Haute' | 'Immédiate';
+export type Criticality = 'Faible' | 'Moyenne' | 'Haute' | 'Critique';
 
 export interface Incident {
   id: string;
-  title: string;
   reference: string;
   status: IncidentStatus;
   priority: Priority;
+  urgency: Urgency;
   site: string;
   service: string;
   category: string;
-  createdAt: string;
-  updatedAt: string;
-  dueDate: string;
+  createdAt: Date;
+  updatedAt: Date;
+  dueDate: Date;
   assignedTo?: User;
   description: string;
+  scope?: string | null;
+  criticality: Criticality;
+  reporterId: string;
+  subProcessId?: string;
+  subCategoryId: string;
+  processDomainId?: string;
+  impactedServices?: string[];
 }
 
 export interface IncidentStats {

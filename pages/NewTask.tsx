@@ -44,27 +44,134 @@ export const NewTask: React.FC = () => {
     }
   };
 
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!incidentId) return;
+
+  //   setLoading(true);
+  //   try {
+  //       const taskData = {
+  //           title: formData.title,
+  //           description: formData.description,
+  //           // In a real app, attachments would be uploaded to a server here
+  //       };
+
+  //       if (isEditMode && taskId) {
+  //           await api.updateTask(taskId, taskData);
+  //       } else {
+  //           await api.createTask(incidentId, taskData);
+  //       }
+  //       navigate(`/incidents/${incidentId}`);
+  //   } catch (error) {
+  //       console.error(error);
+  //       setLoading(false);
+  //   }
+  // };
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!incidentId) return;
+
+  //   setLoading(true);
+
+  //   try {
+  //     const data = new FormData();
+
+  //     // ✅ NOMS CORRECTS
+  //     data.append('name', formData.title);
+  //     data.append('description', formData.description);
+
+  //     // ✅ RELATIONS OBLIGATOIRES
+  //     data.append('incidentId', incidentId);
+
+  //     // ⚠️ À ADAPTER selon ton auth (ex: depuis JWT / contexte)
+  //     // Exemple :
+  //     data.append('userId', '1'); // ← ID utilisateur connecté
+
+  //     // ✅ PIÈCES JOINTES
+  //     formData.attachments.forEach(file => {
+  //       data.append('attachments', file);
+  //     });
+
+  //     if (isEditMode && taskId) {
+  //       await api.updateTask(taskId, data);
+  //     } else {
+  //       await api.createTask(data);
+  //     }
+
+  //     navigate(`/incidents/${incidentId}`);
+  //   } catch (error) {
+  //     console.error(error);
+  //     setLoading(false);
+  //   }
+  // };
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!incidentId) return;
+
+  //   setLoading(true);
+
+  //   try {
+  //     const data = new FormData();
+
+  //     // ✅ champs métier
+  //     data.append('name', formData.title);
+  //     data.append('description', formData.description);
+
+  //     // ✅ relation obligatoire
+  //     data.append('incidentId', incidentId);
+
+  //     // ✅ pièces jointes
+  //     formData.attachments.forEach(file => {
+  //       data.append('attachments', file);
+  //     });
+
+  //     if (isEditMode && taskId) {
+  //       await api.updateTask(taskId, data);
+  //     } else {
+  //       await api.createTask(data);
+  //     }
+
+  //     navigate(`/incidents/${incidentId}`);
+  //   } catch (error) {
+  //     console.error(error);
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!incidentId) return;
 
     setLoading(true);
-    try {
-        const taskData = {
-            title: formData.title,
-            description: formData.description,
-            // In a real app, attachments would be uploaded to a server here
-        };
 
-        if (isEditMode && taskId) {
-            await api.updateTask(taskId, taskData);
-        } else {
-            await api.createTask(incidentId, taskData);
-        }
-        navigate(`/incidents/${incidentId}`);
+    try {
+      const data = new FormData();
+
+      // ✅ champs métier
+      data.append('name', formData.title.trim());
+      data.append('description', formData.description ?? '');
+
+      // ✅ relation obligatoire (string numérique)
+      data.append('incidentId', String(incidentId));
+
+      // ✅ pièces jointes
+      formData.attachments.forEach(file => {
+        data.append('attachments', file);
+      });
+
+      if (isEditMode && taskId) {
+        await api.updateTask(taskId, data);
+      } else {
+        await api.createTask(data);
+      }
+
+      navigate(`/incidents/${incidentId}`);
     } catch (error) {
-        console.error(error);
-        setLoading(false);
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -56,7 +56,7 @@ export const NewIncident: React.FC = () => {
                     setFormData(prev => ({
                         ...prev,
                         description: incident.description,
-                        dueDate: incident.dueDate ? incident.dueDate.split('T')[0] : '',
+                        dueDate: incident.dueDate ? incident.dueDate : '',
                         category: incident.category,
                         impactedServices: incident.service ? incident.service.split(', ') : [],
                         // Note: Other fields would need detailed mapping if they existed in the Incident type
@@ -384,6 +384,16 @@ export const NewIncident: React.FC = () => {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site(s) concerné(s) <span className="text-red-500">*</span></label>
+                            <MultiSelect
+                                required
+                                options={sites.map(s => s.name).filter(Boolean)}
+                                selected={formData.responsibleServices}
+                                onChange={(vals) => handleMultiSelectChange('responsibleServices', vals)}
+                                placeholder="Choisir les services..."
+                            />
+                        </div>
+                        {/* <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site concerné <span className="text-red-500">*</span></label>
                             <MultiSelect
                                 required
@@ -392,7 +402,7 @@ export const NewIncident: React.FC = () => {
                                 onChange={(vals) => handleMultiSelectChange('site', vals)}
                                 placeholder="Choisir un ou plusieurs sites..."
                             />
-                        </div>
+                        </div> */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Périmètre de l'incident / Autre(s) site(s)</label>
                             <input
@@ -627,12 +637,22 @@ export const NewIncident: React.FC = () => {
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service(s) responsable(s) du traitement <span className="text-red-500">*</span></label>
                                 <MultiSelect
                                     required
+                                    options={sites.map(s => s.name)}
+                                    selected={formData.site}
+                                    onChange={(vals) => handleMultiSelectChange('site', vals)}
+                                    placeholder="Choisir un ou plusieurs sites..."
+                                />
+                            </div>
+                            {/* <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service(s) responsable(s) du traitement <span className="text-red-500">*</span></label>
+                                <MultiSelect
+                                    required
                                     options={sites.map(s => s.name).filter(Boolean)}
                                     selected={formData.responsibleServices}
                                     onChange={(vals) => handleMultiSelectChange('responsibleServices', vals)}
                                     placeholder="Choisir les services..."
                                 />
-                            </div>
+                            </div> */}
 
                             <div>
                                 <SearchSelect

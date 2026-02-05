@@ -4,37 +4,38 @@ import { Incident } from '../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Search, ChevronLeft, ChevronRight, Plus, ArrowUpDown, XCircle, FileSpreadsheet, FileText, CheckCircle } from 'lucide-react';
-
 const SERVICES_FILTER_OPTIONS = ['IT Infrastructure', 'IT Support', 'Logistique', 'Finance', 'RH', 'Services Généraux'];
-
 export const IncidentList: React.FC = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
-  
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
   const statusFilter = searchParams.get('status');
-
   useEffect(() => {
     fetchIncidents();
   }, []);
-
   const fetchIncidents = async () => {
     setLoading(true);
     const data = await api.getIncidents();
-    setIncidents(data);
+    const mappedData = data.map(inc => ({
+      ...inc,
+      reference: `INC-${new Date(inc.createdAt).getFullYear()}-${String(inc.id).padStart(3, '0')}`,
+      title: inc.description,
+      description: inc.description,
+      priority: inc.urgency,
+      service: '',
+      assignedTo: null
+    }));
+    setIncidents(mappedData);
     setLoading(false);
   };
-
   const clearFilter = () => {
       setSearchParams({});
       setSearchTerm('');
       setServiceFilter('');
   };
-
   const filteredIncidents = useMemo(() => {
       return incidents.filter(incident => {
           // Status Filter
@@ -57,7 +58,6 @@ export const IncidentList: React.FC = () => {
           return true;
       });
   }, [incidents, statusFilter, serviceFilter, searchTerm]);
-
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
@@ -69,32 +69,44 @@ export const IncidentList: React.FC = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
   };
-
   const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
       e.stopPropagation();
       const csvContent = [
-          ['Reference', 'Title', 'Status', 'Priority', 'Service', 'Created At'],
-          [incident.reference, incident.title, incident.status, incident.priority, incident.service, incident.createdAt]
+          ['Référence', 'Description', 'Statut', 'Priorité', 'Service', 'Créé le'],
+          [incident.reference, incident.description, incident.status, incident.urgency, incident.impactedServices, incident.createdAt]
       ].map(e => e.join(",")).join("\n");
-      
+    
       downloadFile(csvContent, `incident_${incident.reference}.csv`, 'text/csv');
   };
-
   const handleExportPDF = (e: React.MouseEvent, incident: Incident) => {
       e.stopPropagation();
       // Simulating PDF download with a dummy text file
-      const dummyContent = `RAPPORT INCIDENT\n\nREF: ${incident.reference}\nTITRE: ${incident.title}\nSTATUT: ${incident.status}\n...`;
+      const dummyContent = `RAPPORT INCIDENT\n\nREF: ${incident.reference}\nDESCRIPTION: ${incident.description}\nSTATUT: ${incident.status}\nPRIORITÉ: ${incident.priority}\nSERVICE: ${incident.service}\n...`;
       downloadFile(dummyContent, `incident_${incident.reference}.pdf`, 'application/pdf');
       alert(`Export PDF simulé pour ${incident.reference}`);
   };
-
   const handleCloseIncident = async (e: React.MouseEvent, incident: Incident) => {
       e.stopPropagation();
       // Confirmation explicite demandée par les règles métier
       if (window.confirm(`Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`)) {
-          await api.updateIncident(incident.id, { status: 'CLOSED' });
+          //await api.updateIncident(incident.id, { status: 'Clôturé' });
           fetchIncidents(); // Refresh list
       }
+  };
+
+  const urgencyToPriority = (urgency: Incident['urgency']) => {
+    switch (urgency) {
+      case 'Faible':
+        return 'LOW';
+      case 'Moyenne':
+        return 'MEDIUM';
+      case 'Haute':
+        return 'HIGH';
+      case 'Immédiate':
+        return 'CRITICAL';
+      default:
+        return 'LOW';
+    }
   };
 
   return (
@@ -112,7 +124,7 @@ export const IncidentList: React.FC = () => {
                 </span>
             )}
         </div>
-        
+      
         <div className="flex items-center gap-3">
              <div className="relative">
                 <Search className="absolute left-2.5 top-1.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
@@ -124,7 +136,7 @@ export const IncidentList: React.FC = () => {
                   className="h-8 w-48 lg:w-64 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all hover:border-slate-300 dark:hover:border-slate-600"
                 />
              </div>
-             
+           
              <select
                  value={serviceFilter}
                  onChange={(e) => setServiceFilter(e.target.value)}
@@ -135,7 +147,6 @@ export const IncidentList: React.FC = () => {
                      <option key={service} value={service}>{service}</option>
                  ))}
              </select>
-
              <button
                 className="h-8 pl-2 pr-3 bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 dark:hover:bg-brand-500 text-white rounded-md text-sm font-medium flex items-center gap-1.5 shadow-sm transition-all"
                 onClick={() => navigate('/incidents/new')}
@@ -145,7 +156,6 @@ export const IncidentList: React.FC = () => {
              </button>
         </div>
       </div>
-
       {/* Table Container - Flex grow to fill space */}
       <div className="flex-1 overflow-auto bg-white dark:bg-slate-900">
         {loading ? (
@@ -169,15 +179,15 @@ export const IncidentList: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">
                     <div className="flex items-center gap-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">Priorité <ArrowUpDown className="h-3 w-3" /></div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Service</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Service traitant</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Assigné</th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[280px]">Actions Rapides</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-50 dark:divide-slate-800">
               {filteredIncidents.map((incident) => (
-                <tr 
-                    key={incident.id} 
+                <tr
+                    key={incident.id}
                     className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/incidents/${incident.id}`)}
                 >
@@ -194,14 +204,32 @@ export const IncidentList: React.FC = () => {
                       <StatusBadge status={incident.status} />
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
-                      <PriorityBadge priority={incident.priority} showLabel={false} />
+                      <PriorityBadge priority={urgencyToPriority(incident.urgency)} showLabel={true} />
                   </td>
-                  <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
+                  {/* <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {incident.service}
+                        {incident.impactedServices}
                       </span>
-                  </td>
+                  </td> */}
                   <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
+                    <div className="flex flex-wrap gap-1">
+                      {incident.sites && incident.sites.length > 0 ? (
+                        incident.sites.map(site => (
+                          <span
+                            key={site.id}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                      bg-slate-100 dark:bg-slate-800
+                                      text-slate-600 dark:text-slate-300"
+                          >
+                            {site.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 italic">—</span>
+                      )}
+                    </div>
+                  </td>
+                  {/* <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
                     {incident.assignedTo ? (
                         <div className="flex items-center gap-2">
                             <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
@@ -210,25 +238,43 @@ export const IncidentList: React.FC = () => {
                             <span className="text-xs text-slate-600 dark:text-slate-300">{incident.assignedTo.username}</span>
                         </div>
                     ) : <span className="text-xs text-slate-400 italic">--</span>}
+                  </td> */}
+                  <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
+                    {incident.assignedUsers && incident.assignedUsers.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {incident.assignedUsers.map(user => (
+                          <div key={user.id} className="flex items-center gap-2">
+                            <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+                              {user.username.substring(0, 2).toUpperCase()}
+                            </div>
+                            <span className="text-xs text-slate-600 dark:text-slate-300">
+                              {user.username}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">—</span>
+                    )}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap text-right text-xs">
                       <div className="flex items-center justify-end gap-2">
-                          <button 
+                          <button
                             onClick={(e) => handleExportPDF(e, incident)}
                             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
                             title="Exporter en PDF"
                           >
                             <FileText className="h-3.5 w-3.5" /> PDF
                           </button>
-                          <button 
+                          <button
                             onClick={(e) => handleExportExcel(e, incident)}
                             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded transition-colors dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50"
                             title="Exporter en Excel"
                           >
                             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
                           </button>
-                          {incident.status !== 'CLOSED' && incident.status !== 'CANCELLED' && (
-                             <button 
+                          {incident.status !== 'Clôturé' && incident.status !== 'CANCELLED' && (
+                             <button
                                 onClick={(e) => handleCloseIncident(e, incident)}
                                 className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
                                 title="Clôturer l'incident"
@@ -245,7 +291,6 @@ export const IncidentList: React.FC = () => {
           )
         )}
       </div>
-
       {/* Footer Pagination - Minimalist */}
       <div className="border-t border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
          <span className="text-xs text-slate-500 dark:text-slate-400">
