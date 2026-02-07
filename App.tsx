@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -22,6 +23,15 @@ import { ProcessList } from './pages/ProcessList';
 import { NewProcess } from './pages/NewProcess';
 import { SubProcessList } from './pages/SubProcessList';
 import { NewSubProcess } from './pages/NewSubProcess';
+// Admin Imports
+import { PermissionList } from './pages/admin/PermissionList';
+import { NewPermission } from './pages/admin/NewPermission';
+import { RoleList } from './pages/admin/RoleList';
+import { NewRole } from './pages/admin/NewRole';
+import { UserList } from './pages/admin/UserList';
+import { NewUser } from './pages/admin/NewUser';
+import { RolePermissionAssign } from './pages/admin/RolePermissionAssign';
+
 import { User } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
@@ -134,7 +144,7 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
 
-          {/* Sites */}
+          {/* Business Settings */}
           <Route path="/settings/sites" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <SiteList />
@@ -151,7 +161,6 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
 
-          {/* Categories */}
           <Route path="/settings/categories" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <CategoryList />
@@ -168,7 +177,6 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
 
-          {/* SubCategories */}
           <Route path="/settings/sub-categories" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <SubCategoryList />
@@ -185,7 +193,6 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
 
-          {/* Processes */}
           <Route path="/settings/processes" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <ProcessList />
@@ -202,7 +209,6 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
 
-          {/* SubProcesses */}
           <Route path="/settings/sub-processes" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <SubProcessList />
@@ -216,6 +222,61 @@ const App: React.FC = () => {
           <Route path="/settings/sub-processes/:id/edit" element={
             <ProtectedRoute user={user} onLogout={handleLogout}>
               <NewSubProcess />
+            </ProtectedRoute>
+          } />
+
+          {/* ADMIN / RBAC ROUTES */}
+          <Route path="/settings/permissions" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <PermissionList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/permissions/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewPermission />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/permissions/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewPermission />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings/roles" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <RoleList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/roles/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewRole />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/roles/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewRole />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings/users" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <UserList />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/users/new" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewUser />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/users/:id/edit" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <NewUser />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings/assignment" element={
+            <ProtectedRoute user={user} onLogout={handleLogout}>
+              <RolePermissionAssign />
             </ProtectedRoute>
           } />
 

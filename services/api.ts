@@ -1,5 +1,5 @@
 
-import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess } from '../types';
+import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, AdminPermission, AdminRole, AdminUser } from '../types';
 import { MOCK_DELAY } from '../constants';
 
 // Simulating API calls with promises and delays
@@ -110,6 +110,33 @@ let MOCK_SUB_PROCESSES: SubProcess[] = [
     { id: 'sp2', name: 'Facturation', description: 'Émission des factures clients', processId: 'p1' },
     { id: 'sp3', name: 'Expédition', description: 'Préparation et envoi des colis', processId: 'p3' },
 ];
+
+// --- RBAC MOCK DATA ---
+let MOCK_PERMISSIONS: AdminPermission[] = [
+    { id: 'perm1', name: 'read:incidents' },
+    { id: 'perm2', name: 'write:incidents' },
+    { id: 'perm3', name: 'delete:incidents' },
+    { id: 'perm4', name: 'manage:users' },
+];
+
+let MOCK_ROLES: AdminRole[] = [
+    { id: 'role1', name: 'ADMIN' },
+    { id: 'role2', name: 'MANAGER' },
+    { id: 'role3', name: 'USER' },
+];
+
+let MOCK_ADMIN_USERS: AdminUser[] = [
+    { id: 'u1', username: 'jdoe', roleId: 'role1', isActive: true, createdAt: '2023-01-01' },
+    { id: 'u2', username: 'alice', roleId: 'role2', isActive: true, createdAt: '2023-02-15' },
+    { id: 'u3', username: 'bob', roleId: 'role3', isActive: false, createdAt: '2023-03-10' },
+];
+
+// Map RoleID -> Array of PermissionIDs
+let MOCK_ROLE_PERMISSIONS: Record<string, string[]> = {
+    'role1': ['perm1', 'perm2', 'perm3', 'perm4'], // Admin has all
+    'role2': ['perm1', 'perm2'], // Manager read/write
+    'role3': ['perm1'], // User read only
+};
 
 export const api = {
   login: async (username: string, password: string): Promise<User> => {
@@ -471,4 +498,133 @@ export const api = {
           }, MOCK_DELAY);
       });
   },
+
+  // --- RBAC: Permissions ---
+  getPermissions: async (): Promise<AdminPermission[]> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_PERMISSIONS), MOCK_DELAY));
+  },
+  getPermissionById: async (id: string): Promise<AdminPermission | undefined> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_PERMISSIONS.find(p => p.id === id)), MOCK_DELAY));
+  },
+  createPermission: async (data: Partial<AdminPermission>): Promise<AdminPermission> => {
+      return new Promise(resolve => {
+          setTimeout(() => {
+              const newItem: AdminPermission = { id: Math.random().toString(36).substr(2, 9), name: data.name || '' };
+              MOCK_PERMISSIONS.push(newItem);
+              resolve(newItem);
+          }, MOCK_DELAY);
+      });
+  },
+  updatePermission: async (id: string, updates: Partial<AdminPermission>): Promise<AdminPermission> => {
+       return new Promise((resolve, reject) => {
+          setTimeout(() => {
+              const index = MOCK_PERMISSIONS.findIndex(c => c.id === id);
+              if (index !== -1) { MOCK_PERMISSIONS[index] = { ...MOCK_PERMISSIONS[index], ...updates }; resolve(MOCK_PERMISSIONS[index]); }
+              else reject("Not found");
+          }, MOCK_DELAY);
+      });
+  },
+  deletePermission: async (id: string): Promise<void> => {
+      return new Promise(resolve => {
+          setTimeout(() => {
+              const index = MOCK_PERMISSIONS.findIndex(c => c.id === id);
+              if (index !== -1) MOCK_PERMISSIONS.splice(index, 1);
+              resolve();
+          }, MOCK_DELAY);
+      });
+  },
+
+  // --- RBAC: Roles ---
+  getRoles: async (): Promise<AdminRole[]> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_ROLES), MOCK_DELAY));
+  },
+  getRoleById: async (id: string): Promise<AdminRole | undefined> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_ROLES.find(r => r.id === id)), MOCK_DELAY));
+  },
+  createRole: async (data: Partial<AdminRole>): Promise<AdminRole> => {
+      return new Promise(resolve => {
+          setTimeout(() => {
+              const newItem: AdminRole = { id: Math.random().toString(36).substr(2, 9), name: data.name || '' };
+              MOCK_ROLES.push(newItem);
+              // Init empty permissions for new role
+              MOCK_ROLE_PERMISSIONS[newItem.id] = [];
+              resolve(newItem);
+          }, MOCK_DELAY);
+      });
+  },
+  updateRole: async (id: string, updates: Partial<AdminRole>): Promise<AdminRole> => {
+       return new Promise((resolve, reject) => {
+          setTimeout(() => {
+              const index = MOCK_ROLES.findIndex(c => c.id === id);
+              if (index !== -1) { MOCK_ROLES[index] = { ...MOCK_ROLES[index], ...updates }; resolve(MOCK_ROLES[index]); }
+              else reject("Not found");
+          }, MOCK_DELAY);
+      });
+  },
+  deleteRole: async (id: string): Promise<void> => {
+      return new Promise(resolve => {
+          setTimeout(() => {
+              const index = MOCK_ROLES.findIndex(c => c.id === id);
+              if (index !== -1) {
+                  MOCK_ROLES.splice(index, 1);
+                  delete MOCK_ROLE_PERMISSIONS[id];
+              }
+              resolve();
+          }, MOCK_DELAY);
+      });
+  },
+
+  // --- RBAC: Users ---
+  getAdminUsers: async (): Promise<AdminUser[]> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_ADMIN_USERS), MOCK_DELAY));
+  },
+  getAdminUserById: async (id: string): Promise<AdminUser | undefined> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_ADMIN_USERS.find(u => u.id === id)), MOCK_DELAY));
+  },
+  createAdminUser: async (data: Partial<AdminUser>): Promise<AdminUser> => {
+       return new Promise(resolve => {
+          setTimeout(() => {
+              const newItem: AdminUser = { 
+                  id: Math.random().toString(36).substr(2, 9), 
+                  username: data.username || '',
+                  roleId: data.roleId || '',
+                  isActive: data.isActive !== undefined ? data.isActive : true,
+                  createdAt: new Date().toISOString().split('T')[0]
+              };
+              MOCK_ADMIN_USERS.push(newItem);
+              resolve(newItem);
+          }, MOCK_DELAY);
+      });
+  },
+  updateAdminUser: async (id: string, updates: Partial<AdminUser>): Promise<AdminUser> => {
+       return new Promise((resolve, reject) => {
+          setTimeout(() => {
+              const index = MOCK_ADMIN_USERS.findIndex(c => c.id === id);
+              if (index !== -1) { MOCK_ADMIN_USERS[index] = { ...MOCK_ADMIN_USERS[index], ...updates }; resolve(MOCK_ADMIN_USERS[index]); }
+              else reject("Not found");
+          }, MOCK_DELAY);
+      });
+  },
+  deleteAdminUser: async (id: string): Promise<void> => {
+       return new Promise(resolve => {
+          setTimeout(() => {
+              const index = MOCK_ADMIN_USERS.findIndex(c => c.id === id);
+              if (index !== -1) MOCK_ADMIN_USERS.splice(index, 1);
+              resolve();
+          }, MOCK_DELAY);
+      });
+  },
+
+  // --- RBAC: Assignments ---
+  getRolePermissions: async (roleId: string): Promise<string[]> => {
+      return new Promise(resolve => setTimeout(() => resolve(MOCK_ROLE_PERMISSIONS[roleId] || []), MOCK_DELAY));
+  },
+  updateRolePermissions: async (roleId: string, permissionIds: string[]): Promise<void> => {
+      return new Promise(resolve => {
+          setTimeout(() => {
+              MOCK_ROLE_PERMISSIONS[roleId] = permissionIds;
+              resolve();
+          }, MOCK_DELAY);
+      });
+  }
 };

@@ -10,6 +10,25 @@ export interface User {
   avatarUrl?: string;
 }
 
+// Admin / RBAC Types
+export interface AdminPermission {
+  id: string;
+  name: string;
+}
+
+export interface AdminRole {
+  id: string;
+  name: string;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  roleId: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 // Incident Types
 export type IncidentStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
