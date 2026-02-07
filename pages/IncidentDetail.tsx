@@ -87,22 +87,19 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
         navigate(`/incidents/${id}/tasks/${taskId}/edit`);
     };
 
-    const handleDeleteTask = async (taskId: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
-        return;
-    }
+    const handleDeleteTask = async (taskId: number) => {
+    const confirmed = window.confirm(
+        "Êtes-vous sûr de vouloir supprimer cette tâche ?"
+    );
+    if (!confirmed) return;
 
-    const res = await fetch(`/api/tasks/${taskId}`, {
-        method: 'DELETE',
-    });
-
-    if (!res.ok) {
+    try {
+        await api.deleteTask(String(taskId)); // API = string URL
+        setTasks(prev => prev.filter(task => task.id !== taskId));
+    } catch (error) {
         alert("Erreur lors de la suppression de la tâche");
-        return;
+        console.error(error);
     }
-
-    // Mise à jour UI immédiate
-    setTasks(prev => prev.filter(task => task.id !== taskId));
     };
 
     const handleDeleteTaskAttachments = async (taskId: string) => {
@@ -128,41 +125,70 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
         URL.revokeObjectURL(url);
     };
 
-    const handleExportExcel = () => {
-        if (!incident) return;
-        const csvContent = [
-            ['Reference', 'Title', 'Status', 'Priority', 'Service', 'Created At'],
-            [incident.reference, incident.title, incident.status, incident.priority, incident.service, incident.createdAt]
-        ].map(e => e.join(",")).join("\n");
+    const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
+        e.stopPropagation();
 
-        downloadFile(csvContent, `incident_${incident.reference}.csv`, 'text/csv');
+        const formatValue = (value: any) => {
+        if (value === null || value === undefined) return '';
+        if (value instanceof Date) {
+            return value.toLocaleDateString('fr-FR');
+        }
+        return `"${String(value).replace(/"/g, '""')}"`;
+        };
+
+        const rows = [
+        ['Référence', 'Description', 'Statut', 'Priorité', 'Sites', 'Créé le'],
+        [
+            incident.reference,
+            incident.description,
+            incident.status,
+            incident.urgency,
+            incident.sites.map(s => s.name).join(', ') ?? '',
+            new Date(incident.createdAt),
+        ],
+        ];
+
+        const csvContent = rows
+        .map(row => row.map(formatValue).join(';')) // ✅ séparateur Excel FR
+        .join('\n');
+
+        downloadFile(
+        csvContent,
+        `incident_${incident.reference}.csv`,
+        'text/csv;charset=utf-8;'
+        );
     };
 
-    const handleExportPDF = async () => {
-    if (!id) return;
 
-    const res = await fetch(`/api/incidents/${id}/pdf`);
+    const handleExportPDF = async (e: React.MouseEvent) => {
+    e.stopPropagation();
 
-    if (!res.ok) {
-        alert("Erreur lors de la génération du PDF");
-        return;
+    if (!incident) return;
+
+    try {
+        const pdfBlob = await api.getIncidentReportPdf(incident.id);
+
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = `FICHE_INCIDENT_${incident.reference}.pdf`;
+
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error: any) {
+        console.error(error);
+        alert(error.message || 'Impossible de générer le PDF');
     }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `incident_${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
     };
 
     const handleAttachmentClick = (att: IncidentAttachment) => {
     window.open(att.url, '_blank');
     };
+
 
     const handleDeleteIncidentAttachment = async (
     attachmentId: string,
@@ -172,11 +198,10 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
 
     if (!window.confirm("Supprimer la pièce jointe ?")) return;
 
-    const res = await fetch(`/api/attachments/${attachmentId}`, {
-        method: 'DELETE',
-    });
+    const res = await api.deleteIncidentAttachment(incident.id, attachmentId);
 
     if (!res.ok) {
+        console.error('DELETE attachment failed', await res.text());
         alert("Erreur lors de la suppression");
         return;
     }
@@ -538,20 +563,11 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                     }
                                 />
 
-                                <PropertyRow label="Service" value={<span className="inline-block bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">{incident.service}</span>} />
-                                <PropertyRow label="Échéance" value={new Date(incident.dueDate).toLocaleDateString()} icon={Calendar} />
-                                <PropertyRow label="Créé le" value={new Date(incident.createdAt).toLocaleDateString()} icon={Clock} />
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-900 lg:bg-transparent lg:dark:bg-transparent rounded-lg p-4 lg:p-0 border lg:border-0 border-slate-200 dark:border-slate-800 shadow-sm lg:shadow-none">
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Contexte</h3>
-                            <div className="space-y-1">
-                                <PropertyRow label="Site(s) concerné(s)"
+                                <PropertyRow label="Site(s) concerné(s)" 
                                     value={
                                         <div className="flex flex-wrap gap-1">
-                                            {incident.impactedSiteIds?.length
-                                                ? incident.impactedSiteIds.map(site => (
+                                            {incident.impactedSites?.length
+                                                ? incident.impactedSites.map(site => (
                                                     <span
                                                         key={site.id}
                                                         className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
@@ -561,7 +577,32 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                                 ))
                                                 : '—'}
                                         </div>
-                                    } />
+                                    }
+                                 />
+                                <PropertyRow label="Échéance" value={new Date(incident.dueDate).toLocaleDateString()} icon={Calendar} />
+                                <PropertyRow label="Créé le" value={new Date(incident.createdAt).toLocaleDateString()} icon={Clock} />
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 lg:bg-transparent lg:dark:bg-transparent rounded-lg p-4 lg:p-0 border lg:border-0 border-slate-200 dark:border-slate-800 shadow-sm lg:shadow-none">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Contexte</h3>
+                            <div className="space-y-1">
+                                <PropertyRow label="Site(s) concerné(s)" 
+                                    value={
+                                        <div className="flex flex-wrap gap-1">
+                                            {incident.impactedSites?.length
+                                                ? incident.impactedSites.map(site => (
+                                                    <span
+                                                        key={site.id}
+                                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                                    >
+                                                        {site.name}
+                                                    </span>
+                                                ))
+                                                : '—'}
+                                        </div>
+                                    }
+                                 />
                                 <PropertyRow label="Catégorie" value={incident.category ?? '—'} />
                                 <PropertyRow label="Sous Catégorie" value={incident.subCategory ?? '—'} />
                                 <PropertyRow label="Processus" value={incident.processDomain ?? '—'} />

@@ -69,30 +69,117 @@ export const IncidentList: React.FC = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
   };
-  const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
-      e.stopPropagation();
-      const csvContent = [
-          ['Référence', 'Description', 'Statut', 'Priorité', 'Service', 'Créé le'],
-          [incident.reference, incident.description, incident.status, incident.urgency, incident.impactedServices, incident.createdAt]
-      ].map(e => e.join(",")).join("\n");
+
+  // const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
+  //     e.stopPropagation();
+  //     const csvContent = [
+  //         ['Référence', 'Description', 'Statut', 'Priorité', 'Service', 'Créé le'],
+  //         [incident.reference, incident.description, incident.status, incident.urgency, incident.impactedServices, incident.createdAt]
+  //     ].map(e => e.join(",")).join("\n");
     
-      downloadFile(csvContent, `incident_${incident.reference}.csv`, 'text/csv');
-  };
-  const handleExportPDF = (e: React.MouseEvent, incident: Incident) => {
-      e.stopPropagation();
-      // Simulating PDF download with a dummy text file
-      const dummyContent = `RAPPORT INCIDENT\n\nREF: ${incident.reference}\nDESCRIPTION: ${incident.description}\nSTATUT: ${incident.status}\nPRIORITÉ: ${incident.priority}\nSERVICE: ${incident.service}\n...`;
-      downloadFile(dummyContent, `incident_${incident.reference}.pdf`, 'application/pdf');
-      alert(`Export PDF simulé pour ${incident.reference}`);
-  };
-  const handleCloseIncident = async (e: React.MouseEvent, incident: Incident) => {
-      e.stopPropagation();
-      // Confirmation explicite demandée par les règles métier
-      if (window.confirm(`Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`)) {
-          //await api.updateIncident(incident.id, { status: 'Clôturé' });
-          fetchIncidents(); // Refresh list
+  //     downloadFile(csvContent, `incident_${incident.reference}.csv`, 'text/csv');
+  // };
+
+  const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
+    e.stopPropagation();
+
+    const formatValue = (value: any) => {
+      if (value === null || value === undefined) return '';
+      if (value instanceof Date) {
+        return value.toLocaleDateString('fr-FR');
       }
+      return `"${String(value).replace(/"/g, '""')}"`;
+    };
+
+    const rows = [
+      ['Référence', 'Description', 'Statut', 'Priorité', 'Sites', 'Créé le'],
+      [
+        incident.reference,
+        incident.description,
+        incident.status,
+        incident.urgency,
+        incident.sites.map(s => s.name).join(', ') ?? '',
+        new Date(incident.createdAt),
+      ],
+    ];
+
+    const csvContent = rows
+      .map(row => row.map(formatValue).join(';')) // ✅ séparateur Excel FR
+      .join('\n');
+
+    downloadFile(
+      csvContent,
+      `incident_${incident.reference}.csv`,
+      'text/csv;charset=utf-8;'
+    );
   };
+
+
+  const handleExportPDF = async (
+    e: React.MouseEvent,
+    incident: Incident
+  ) => {
+    e.stopPropagation();
+
+    try {
+      /**
+       * 1️⃣ Appel API métier
+       */
+      const pdfBlob = await api.getIncidentReportPdf(incident.id);
+
+      /**
+       * 2️⃣ Téléchargement côté navigateur
+       */
+      const url = URL.createObjectURL(pdfBlob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `FICHE_INCIDENT_${incident.reference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || 'Impossible de générer le PDF');
+    }
+  };
+
+    const handleCloseIncident = async (
+    e: React.MouseEvent,
+    incident: Incident
+  ) => {
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('status', 'CLOSED'); // ⚠️ valeur ENUM backend
+
+      await api.updateIncident(incident.id, formData);
+
+      fetchIncidents(); // refresh liste
+    } catch (error) {
+      console.error('Erreur lors de la clôture de l’incident', error);
+      alert("Impossible de clôturer l'incident");
+    }
+  };
+
+  // const handleCloseIncident = async (e: React.MouseEvent, incident: Incident) => {
+  //     e.stopPropagation();
+  //     // Confirmation explicite demandée par les règles métier
+  //     if (window.confirm(`Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`)) {
+  //         await api.updateIncident(incident.id, { status: 'Clôturé' });
+  //         fetchIncidents(); // Refresh list
+  //     }
+  // };
 
   const urgencyToPriority = (urgency: Incident['urgency']) => {
     switch (urgency) {

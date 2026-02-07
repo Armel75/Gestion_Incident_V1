@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, UploadCloud } from 'lucide-react';
+import { api } from '@/services/api';
 
 export const IncidentAttachments: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,14 +15,37 @@ export const IncidentAttachments: React.FC = () => {
     }
   };
 
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   // Simulating API call delay for UX feedback
+  //   setTimeout(() => {
+  //       setLoading(false);
+  //       navigate(`/incidents/${id}`);
+  //   }, 800);
+  // };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!id || files.length === 0) return;
+
     setLoading(true);
-    // Simulating API call delay for UX feedback
-    setTimeout(() => {
-        setLoading(false);
-        navigate(`/incidents/${id}`);
-    }, 800);
+
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('attachments', file);
+    });
+
+    const res = await api.updateIncidentAttachments(id, formData);
+
+    setLoading(false);
+
+    if (!res.ok) {
+      alert("Erreur lors de l’upload des fichiers");
+      return;
+    }
+
+    navigate(`/incidents/${id}`);
   };
 
   return (

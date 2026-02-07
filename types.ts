@@ -23,19 +23,22 @@ export interface Incident {
   urgency: Urgency;
   site: string;
   service: string;
+  categoryId: string;
   category: string;
   createdAt: Date;
   updatedAt: Date;
   dueDate: Date;
-  assignedTo?: User;
   description: string;
   scope?: string | null;
   criticality: Criticality;
   reporterId: string;
   subProcessId?: string;
   subCategoryId: string;
+  otherSubCategory?: string;
   processDomainId?: string;
-  impactedServices?: string[];
+  sites: Site[];
+  impactedSites: Site[];
+  assignedUsers?: User[];
 }
 
 export interface IncidentStats {
@@ -51,12 +54,13 @@ export interface IncidentStats {
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 
 export interface Task {
-  id: string;
-  title: string;
+  id: number;
+  name: string;
   description?: string;
   assignedTo: string;
   status: TaskStatus;
   dueDate: string;
+  incidentId: string;
 }
 
 // Settings Types

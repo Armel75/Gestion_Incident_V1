@@ -44,7 +44,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           src={logoSrc}
           alt="Sorepco"
         />
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900 dark:text-white">IncidentManager</h2>
+        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Tracking Incident</h2>
         <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
           Connexion à l'espace entreprise
         </p>

@@ -29,7 +29,7 @@ export const NewIncident: React.FC = () => {
         keyProcess: '',
         subProcessId: '', // Au lieu de subProcess
         description: '',
-        impactedServices: [] as string[],
+        impactedSites: [] as string[],
         criticality: 'Moyenne',
         urgency: 'Moyenne',
         responsibleServices: [] as string[],
@@ -41,33 +41,36 @@ export const NewIncident: React.FC = () => {
     //const [sites, setSites] = useState<string[]>([]);
     const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [subCategories, setSubCategories] = useState<Record<string, string[]>>({});
+    const [subCategories, setSubCategories] = useState<Record<string, SubCategory[]>>({});
     const [processDomains, setProcessDomains] = useState<Process[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [subProcess, setSubProcess] =
         useState<Record<string, { id: string; name: string }[]>>({});
+    const [refsLoaded, setRefsLoaded] = useState(false);
 
-    useEffect(() => {
-        if (isEditMode && id) {
-            const fetchIncident = async () => {
-                const incident = await api.getIncidentById(id);
-                if (incident) {
-                    // Populate form with existing data (Simplified mapping)
-                    setFormData(prev => ({
-                        ...prev,
-                        description: incident.description,
-                        dueDate: incident.dueDate ? incident.dueDate : '',
-                        category: incident.category,
-                        impactedServices: incident.service ? incident.service.split(', ') : [],
-                        // Note: Other fields would need detailed mapping if they existed in the Incident type
-                        // For this exercise, we keep it simple as the type is limited
-                        site: incident.site ? incident.site.split(', ') : []
-                    }));
-                }
-            };
-            fetchIncident();
-        }
-    }, [id, isEditMode]);
+    // useEffect(() => {
+    //     if (isEditMode && id) {
+    //         const fetchIncident = async () => {
+    //             const incident = await api.getIncidentById(id);
+    //             if (incident) {
+    //                 // Populate form with existing data (Simplified mapping)
+    //                 setFormData(prev => ({
+    //                     ...prev,
+    //                     description: incident.description,
+    //                     dueDate: incident.dueDate ? incident.dueDate : '',
+    //                     category: incident.category,
+    //                     //impactedServices: incident.service ? incident.service.split(', ') : [],
+    //                     impactedSites: incident.impactedSites?.map(s => s.name) ?? [],
+    //                     // Note: Other fields would need detailed mapping if they existed in the Incident type
+    //                     // For this exercise, we keep it simple as the type is limited
+    //                     //site: incident.site ? incident.site.split(', ') : []
+    //                     site: incident.sites?.map(s => s.name) ?? [],
+    //                 }));
+    //             }
+    //         };
+    //         fetchIncident();
+    //     }
+    // }, [id, isEditMode]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -117,9 +120,50 @@ export const NewIncident: React.FC = () => {
             setProcessDomains(processesData);
             setUsers(usersData);
             //setSubProcess(subProcessData);
+            setRefsLoaded(true);
         };
         fetchData();
     }, []);
+
+    // 3️⃣ useEffect – chargement de l’incident (À AJOUTER / REMPLACER)
+    useEffect(() => {
+    if (!isEditMode || !id || !refsLoaded) return;
+
+    const fetchIncident = async () => {
+        const incident = await api.getIncidentById(id);
+        if (!incident) return;
+        console.log(incident)
+        setFormData({
+        site: incident.sites?.map(s => s.name) ?? [],
+        impactedSites: incident.impactedSites?.map(s => s.name) ?? [],
+        scope: incident.scope ?? '',
+        description: incident.description ?? '',
+        //dueDate: incident.dueDate?.slice(0, 10) ?? '',
+        dueDate: incident.dueDate
+        ? new Date(incident.dueDate).toISOString().slice(0, 10)
+        : '',
+
+        // ✅ ICI LA CORRECTION
+        category: incident.categoryId ? String(incident.categoryId) : '',
+        subCategory: incident.subCategoryId ? String(incident.subCategoryId) : '',
+        
+        otherSubCategory: incident.otherSubCategory ?? '',
+
+        processDomain: incident.processDomainId ? String(incident.processDomainId) : '',
+        subProcessId: incident.subProcessId ? String(incident.subProcessId) : '',
+
+        criticality: incident.criticality ?? 'Moyenne',
+        urgency: incident.urgency ?? 'Moyenne',
+
+        assignedUsers: incident.assignedUsers?.map(u => u.username) ?? [],
+        responsibleServices: [],
+
+        attachments: [],
+        });
+    };
+
+    fetchIncident();
+    }, [id, isEditMode, refsLoaded, categories, subCategories]);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -162,128 +206,20 @@ export const NewIncident: React.FC = () => {
         }
     };
 
-    // const handleSubmit = async (e: React.FormEvent) => {
-    //     e.preventDefault();
-
-    //     // 1️⃣ Validations client
-    //     if (formData.site.length === 0) {
-    //         alert("Veuillez sélectionner au moins un site.");
-    //         return;
-    //     }
-
-    //     if (!formData.category) {
-    //         alert("Veuillez sélectionner une catégorie.");
-    //         return;
-    //     }
-
-    //     if (!formData.subCategory && !formData.otherSubCategory) {
-    //         alert("Sous-catégorie obligatoire.");
-    //         return;
-    //     }
-
-    //     if (formData.processDomain && !formData.subProcessId) {
-    //         alert("Sous-processus obligatoire si domaine sélectionné.");
-    //         return;
-    //     }
-
-    //     try {
-    //         setLoading(true);
-
-    //         // =====================================================
-    //         // 🟢 MODE CRÉATION → FormData (multipart)
-    //         // =====================================================
-    //         if (!isEditMode) {
-    //             const payload = new FormData();
-
-    //             payload.append('description', formData.description);
-    //             payload.append('scope', formData.scope ?? '');
-    //             payload.append('categoryId', String(formData.category));
-    //             payload.append('dueDate', formData.dueDate);
-    //             payload.append('urgency', formData.urgency);
-    //             payload.append('criticality', formData.criticality);
-
-    //             // Sites
-    //             formData.site.forEach(siteName => {
-    //                 const site = sites.find(s => s.name === siteName);
-    //                 if (site) payload.append('siteIds', String(site.id));
-    //             });
-
-    //             // Sous-catégorie
-    //             if (formData.otherSubCategory) {
-    //                 payload.append('otherSubCategory', formData.otherSubCategory);
-    //             } else {
-    //                 payload.append('subCategoryId', String(formData.subCategory));
-    //             }
-
-    //             // Processus
-    //             if (formData.processDomain) {
-    //                 payload.append('processDomainId', String(formData.processDomain));
-    //             }
-
-    //             if (formData.subProcessId) {
-    //                 payload.append('subProcessId', String(formData.subProcessId));
-    //             }
-
-    //             // Users assignés
-    //             formData.assignedUsers.forEach(u => {
-    //                 const user = users.find(
-    //                     us => us.username === u || us.fullName === u
-    //                 );
-    //                 if (user) payload.append('assignedUserIds', String(user.id));
-    //             });
-
-    //             // 🔥 Pièces jointes
-    //             formData.attachments.forEach(file => {
-    //                 payload.append('attachments', file);
-    //             });
-
-    //             // Debug
-    //             console.log('FormData envoyé :');
-    //             for (const [key, value] of payload.entries()) {
-    //                 console.log(key, value);
-    //             }
-
-    //             await api.createIncident(payload);
-    //         }
-
-    //         // =====================================================
-    //         // 🟡 MODE ÉDITION → JSON UNIQUEMENT
-    //         // =====================================================
-    //         else {
-    //             const updatePayload = {
-    //                 description: formData.description,
-    //                 scope: formData.scope ?? null,
-    //                 categoryId: String(formData.category),
-    //                 subCategoryId: formData.subCategory
-    //                     ? String(formData.subCategory)
-    //                     : undefined,
-    //                 otherSubCategory: formData.otherSubCategory || undefined,
-    //                 processDomainId: formData.processDomain
-    //                     ? String(formData.processDomain)
-    //                     : undefined,
-    //                 subProcessId: formData.subProcessId
-    //                     ? String(formData.subProcessId)
-    //                     : undefined,
-    //                 dueDate: formData.dueDate,
-    //                 urgency: formData.urgency,
-    //                 criticality: formData.criticality,
-    //             };
-
-    //             await api.updateIncident(id!, updatePayload);
-    //         }
-
-    //         navigate('/incidents');
-    //     } catch (error: any) {
-    //         console.error('Submit error:', error);
-    //         alert(error?.message || 'Erreur inconnue');
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
     const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // ✅ VALIDATION OBLIGATOIRE — SITES CONCERNÉS
+    if (formData.impactedSites.length === 0) {
+        alert("Veuillez sélectionner au moins un site concerné.");
+        return;
+    }
+
+    // (optionnel mais cohérent)
+    if (formData.site.length === 0) {
+        alert("Veuillez sélectionner au moins un site responsable.");
+        return;
+    } 
     const payload = new FormData();
 
     payload.append('description', formData.description);
@@ -292,6 +228,12 @@ export const NewIncident: React.FC = () => {
     payload.append('dueDate', formData.dueDate);
     payload.append('urgency', formData.urgency);
     payload.append('criticality', formData.criticality);
+
+    // Sites concernés (IMPACTÉS)
+    formData.impactedSites.forEach(siteName => {
+        const site = sites.find(s => s.name === siteName);
+        if (site) payload.append('impactedSiteIds', String(site.id));
+    });
 
     // Sites
     formData.site.forEach(siteName => {
@@ -341,10 +283,10 @@ export const NewIncident: React.FC = () => {
     const availableSubProcesses = formData.processDomain ? subProcess[formData.processDomain] || [] : [];
 
     const availableUsers = useMemo(() => {
-        if (formData.responsibleServices.length === 0) return [];
+        if (formData.site.length === 0) return [];
 
         return users.map(user => user.username).filter(Boolean);
-    }, [users, formData.responsibleServices]);
+    }, [users, formData.site]);
 
 
     return (
@@ -388,21 +330,11 @@ export const NewIncident: React.FC = () => {
                             <MultiSelect
                                 required
                                 options={sites.map(s => s.name).filter(Boolean)}
-                                selected={formData.responsibleServices}
-                                onChange={(vals) => handleMultiSelectChange('responsibleServices', vals)}
-                                placeholder="Choisir les services..."
+                                selected={formData.impactedSites}
+                                onChange={(vals) => handleMultiSelectChange('impactedSites', vals)}
+                                placeholder="Choisir les sites..."
                             />
                         </div>
-                        {/* <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site concerné <span className="text-red-500">*</span></label>
-                            <MultiSelect
-                                required
-                                options={sites.map(s => s.name)}
-                                selected={formData.site}
-                                onChange={(vals) => handleMultiSelectChange('site', vals)}
-                                placeholder="Choisir un ou plusieurs sites..."
-                            />
-                        </div> */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Périmètre de l'incident / Autre(s) site(s)</label>
                             <input
@@ -443,6 +375,25 @@ export const NewIncident: React.FC = () => {
                                                 subCategory: ''
                                             }));
                                         }}
+                                        // onChange={(selectedName) => {
+                                        //     const selectedCategory = categories.find(c => c.name === selectedName);
+
+                                        //     setFormData(prev => {
+                                        //         const newCategoryId = selectedCategory ? String(selectedCategory.id) : '';
+
+                                        //         return {
+                                        //             ...prev,
+                                        //             category: newCategoryId,
+
+                                        //             // 🔥 reset SEULEMENT si la catégorie change réellement
+                                        //             subCategory:
+                                        //                 prev.category !== newCategoryId
+                                        //                     ? ''
+                                        //                     : prev.subCategory,
+                                        //         };
+                                        //     });
+                                        // }}
+
                                         placeholder="Rechercher une catégorie..."
                                     />
 
@@ -454,7 +405,10 @@ export const NewIncident: React.FC = () => {
                                     label="Sous-catégorie"
                                     options={availableSubCategories.map(sc => sc.name)}
                                     value={
-                                        availableSubCategories.find(sc => sc.id === formData.subCategory)?.name || ''
+                                        //availableSubCategories.find(sc => sc.id === formData.subCategory)?.name || ''
+                                        availableSubCategories.find(
+                                            sc => String(sc.id) === formData.subCategory
+                                        )?.name || ''
                                     }
                                     onChange={(selectedName) => {
                                         const selectedSubCategory =
@@ -489,7 +443,6 @@ export const NewIncident: React.FC = () => {
                             />
                         </div>
                     )}
-
 
                     <div>
                         <div>
@@ -666,9 +619,9 @@ export const NewIncident: React.FC = () => {
                                         }));
                                     }}
                                     placeholder={
-                                        formData.responsibleServices.length > 0
+                                        formData.site.length > 0
                                             ? "Rechercher un utilisateur..."
-                                            : "Sélectionner un service d'abord"
+                                            : "Sélectionner un site d'abord"
                                     }
                                 />
                             </div>

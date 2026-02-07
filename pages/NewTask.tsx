@@ -9,7 +9,7 @@ export const NewTask: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const isEditMode = !!taskId;
   const [formData, setFormData] = useState({
-    title: '',
+    name: '',
     description: '',
     attachments: [] as File[]
   });
@@ -21,7 +21,7 @@ export const NewTask: React.FC = () => {
             if (task) {
                 setFormData(prev => ({
                     ...prev,
-                    title: task.title,
+                    name: task.name,
                     description: task.description || ''
                 }));
             }
@@ -44,102 +44,6 @@ export const NewTask: React.FC = () => {
     }
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!incidentId) return;
-
-  //   setLoading(true);
-  //   try {
-  //       const taskData = {
-  //           title: formData.title,
-  //           description: formData.description,
-  //           // In a real app, attachments would be uploaded to a server here
-  //       };
-
-  //       if (isEditMode && taskId) {
-  //           await api.updateTask(taskId, taskData);
-  //       } else {
-  //           await api.createTask(incidentId, taskData);
-  //       }
-  //       navigate(`/incidents/${incidentId}`);
-  //   } catch (error) {
-  //       console.error(error);
-  //       setLoading(false);
-  //   }
-  // };
-
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!incidentId) return;
-
-  //   setLoading(true);
-
-  //   try {
-  //     const data = new FormData();
-
-  //     // ✅ NOMS CORRECTS
-  //     data.append('name', formData.title);
-  //     data.append('description', formData.description);
-
-  //     // ✅ RELATIONS OBLIGATOIRES
-  //     data.append('incidentId', incidentId);
-
-  //     // ⚠️ À ADAPTER selon ton auth (ex: depuis JWT / contexte)
-  //     // Exemple :
-  //     data.append('userId', '1'); // ← ID utilisateur connecté
-
-  //     // ✅ PIÈCES JOINTES
-  //     formData.attachments.forEach(file => {
-  //       data.append('attachments', file);
-  //     });
-
-  //     if (isEditMode && taskId) {
-  //       await api.updateTask(taskId, data);
-  //     } else {
-  //       await api.createTask(data);
-  //     }
-
-  //     navigate(`/incidents/${incidentId}`);
-  //   } catch (error) {
-  //     console.error(error);
-  //     setLoading(false);
-  //   }
-  // };
-
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!incidentId) return;
-
-  //   setLoading(true);
-
-  //   try {
-  //     const data = new FormData();
-
-  //     // ✅ champs métier
-  //     data.append('name', formData.title);
-  //     data.append('description', formData.description);
-
-  //     // ✅ relation obligatoire
-  //     data.append('incidentId', incidentId);
-
-  //     // ✅ pièces jointes
-  //     formData.attachments.forEach(file => {
-  //       data.append('attachments', file);
-  //     });
-
-  //     if (isEditMode && taskId) {
-  //       await api.updateTask(taskId, data);
-  //     } else {
-  //       await api.createTask(data);
-  //     }
-
-  //     navigate(`/incidents/${incidentId}`);
-  //   } catch (error) {
-  //     console.error(error);
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!incidentId) return;
@@ -150,7 +54,7 @@ export const NewTask: React.FC = () => {
       const data = new FormData();
 
       // ✅ champs métier
-      data.append('name', formData.title.trim());
+      data.append('name', formData.name ?? '');
       data.append('description', formData.description ?? '');
 
       // ✅ relation obligatoire (string numérique)
@@ -207,13 +111,13 @@ export const NewTask: React.FC = () => {
           <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
               <div className="space-y-6">
                   <div>
-                      <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Titre <span className="text-red-500">*</span></label>
+                      <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Titre <span className="text-red-500">*</span></label>
                       <input 
                         type="text" 
-                        id="title"
-                        name="title" 
+                        id="name"
+                        name="name" 
                         required
-                        value={formData.title}
+                        value={formData.name}
                         onChange={handleChange}
                         placeholder="Action à réaliser"
                         className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
