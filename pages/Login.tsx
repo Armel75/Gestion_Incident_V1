@@ -20,10 +20,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     // Simulate API call
     try {
       const user = await api.login(username, password);
-      onLogin({
-        ...user,
-        role: user.role ?? 'USER', // sécurité
-      });
+      // onLogin({
+      //   id: 0, // ou une valeur temporaire si nécessaire
+      //   username,
+      //   fullName: username,
+      //   role: user.role, // ✅ RÔLE RÉEL
+      // });
       navigate('/', { replace: true });
     } catch (error) {
       console.error("Login failed");

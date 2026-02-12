@@ -1,13 +1,45 @@
 // User Roles
-export type UserRole = 'USER' | 'ARBITRE' | 'ADMIN' | 'MANAGER';
-
+//export type UserRole = 'USER' | 'ARBITRE' | 'ADMIN' | 'MANAGER';
 export interface User {
-  id: string;
+  id: number;
   username: string;
-  role: UserRole;
-  fullName: string;
-  avatarUrl?: string;
+  isActive: boolean;
+
+  roles: {
+    id: number;
+    name: string;
+  }[];
+
+  // 🔐 Appartenance à UN site
+  siteId: number | null;
+  site?: {
+    id: number;
+    name: string;
+  } | null;
+
+  createdAt: string;
+  updatedAt?: string;
 }
+
+
+export type CreateUserDTO = {
+  username: string;
+  password: string;
+  isActive?: boolean;
+  roleIds?: number[];
+  siteId?: number | null;
+};
+
+/**
+ * DTO utilisé pour la mise à jour d’un utilisateur
+ */
+export type UpdateUserDTO = {
+  username?: string;
+  password?: string;
+  isActive?: boolean;
+  roleIds?: number[];
+  siteId?: number | null;
+};
 
 // Incident Types
 export type IncidentStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
@@ -39,6 +71,7 @@ export interface Incident {
   sites: Site[];
   impactedSites: Site[];
   assignedUsers?: User[];
+  serviceEmitter?: string | null;
 }
 
 export interface IncidentStats {
@@ -61,13 +94,24 @@ export interface Task {
   status: TaskStatus;
   dueDate: string;
   incidentId: string;
+  attachments: Attachment[];
 }
 
-// Settings Types
 export interface Site {
-  id: string;
+  id: number;
   name: string;
+
+  createdByUserId: number;
+  createdBy?: {
+    id: number;
+    username: string;
+  };
+
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
 }
+
 
 export interface Category {
   id: string;
@@ -100,4 +144,34 @@ export interface ApiResponse<T> {
   data: T;
   success: boolean;
   message?: string;
+}
+
+// Admin / RBAC Types
+export interface Permission {
+  id: number;
+  code: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+}
+
+export interface RolePermission {
+  permissionId: number;
+  roleId: number;
+}
+
+export interface UserRole {
+  userId: number;
+  roleId: number;
+}
+
+export interface Attachment {
+  id: number;
+  fileName: string;
+  url: string;
+  incidentId: number | null;
+  taskId: number | null;
+  uploadedAt: Date; // ou string si tu récupères une date ISO depuis l’API
 }

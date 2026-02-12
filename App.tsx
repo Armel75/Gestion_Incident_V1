@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/Layout';
+import { RequireRole } from './src/types/auth/RequireRole';
+
 import { Dashboard } from './pages/Dashboard';
 import { IncidentList } from './pages/IncidentList';
 import { IncidentDetail } from './pages/IncidentDetail';
@@ -11,7 +14,7 @@ import { Settings } from './pages/Settings';
 import { TaskList } from './pages/TaskList';
 import { NewTask } from './pages/NewTask';
 import { IncidentAttachments } from './pages/IncidentAttachments';
-import { TaskAttachments } from './pages/TaskAttachments';
+
 import { SiteList } from './pages/SiteList';
 import { NewSite } from './pages/NewSite';
 import { CategoryList } from './pages/CategoryList';
@@ -22,259 +25,75 @@ import { ProcessList } from './pages/ProcessList';
 import { NewProcess } from './pages/NewProcess';
 import { SubProcessList } from './pages/SubProcessList';
 import { NewSubProcess } from './pages/NewSubProcess';
-import { User,  UserRole } from './types';
-import { api, decodeJwt  } from './services/api';
-import { ThemeProvider } from './context/ThemeContext';
 
-interface ProtectedRouteProps {
-  user: User | null;
-  authInitialized: boolean;
-  children: React.ReactNode;
-  onLogout: () => void;
-}
-
+import { UserList } from './pages/admin/UserList';
+import { RoleList } from './pages/admin/RoleList';
+import { PermissionList } from './pages/admin/PermissionList';
+import { RolePermissionAssign } from './pages/admin/RolePermissionAssign';
+import { NewUser } from './pages/admin/NewUser';
+import { NewRole } from './pages/admin/NewRole';
+import { NewPermission } from './pages/admin/NewPermission';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false);
-
-  const handleLogin = (userData: User) => {
-    setUser(userData);
-  };
-
-  const handleLogout = async () => {
-    await api.logout();
-    localStorage.removeItem('accessToken');
-    setUser(null);
-  };
-
-  const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, children, onLogout }) => {
-        if (!authInitialized) {
-        return null; // ou un loader
-      }
-
-      if (!user) {
-        return <Navigate to="/login" replace />;
-      }
-
-    return (
-      <Layout user={user} onLogout={onLogout}>
-        {children}
-      </Layout>
-    );
-  };
-
-  useEffect(() => {
-    const initAuth = () => {
-      const token = localStorage.getItem('accessToken');
-
-      if (token) {
-        try {
-          const decoded = decodeJwt(token);
-
-          const role =
-            Array.isArray(decoded.roles) &&
-            decoded.roles.length > 0 &&
-            typeof decoded.roles[0] === 'string'
-              ? (decoded.roles[0].toUpperCase() as UserRole)
-              : 'USER';
-
-          setUser({
-            id: String(decoded.id),
-            username: decoded.username,
-            fullName: decoded.fullName || decoded.username,
-            role,
-          });
-        } catch {
-          localStorage.removeItem('accessToken');
-          setUser(null);
-        }
-      }
-
-      setAuthInitialized(true);
-    };
-
-    initAuth();
-  }, []);
-
   return (
     <ThemeProvider>
-      <HashRouter>
-        <Routes>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-          <Route
-            path="/login"
-            element={
-              authInitialized && !user
-                ? <Login onLogin={handleLogin} />
-                : <Navigate to="/" />
-            }
-          />
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
 
-          <Route path="/" element={
-            <ProtectedRoute user={user} onLogout={handleLogout}>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
+          <Route path="/incidents" element={<IncidentList />} />
+          <Route path="/incidents/new" element={<NewIncident />} />
+          <Route path="/incidents/:id" element={<IncidentDetail />} />
+          <Route path="/incidents/:id/edit" element={<NewIncident />} />
+          <Route path="/incidents/:id/attachments" element={<IncidentAttachments />} />
 
-          <Route
-            path="/incidents"
-            element={
-              <ProtectedRoute
-                user={user}
-                authInitialized={authInitialized}
-                onLogout={handleLogout}
-              >
-                <IncidentList />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/tasks" element={<TaskList />} />
+          <Route path="/incidents/:incidentId/tasks/new" element={<NewTask />} />
+          <Route path="/incidents/:incidentId/tasks/:taskId/edit" element={<NewTask />} />
 
+          <Route element={<RequireRole allowedRoles={['ADMIN']} />}>
+            <Route path="/pilotage" element={<Pilotage />} />
 
-          <Route path="/incidents/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewIncident />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/sites" element={<SiteList />} />
+            <Route path="/settings/sites/new" element={<NewSite />} />
+            <Route path="/settings/sites/:id/edit" element={<NewSite />} />
 
-          <Route path="/incidents/:id" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <IncidentDetail userRole={user ? user.role : 'USER'} />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/categories" element={<CategoryList />} />
+            <Route path="/settings/categories/new" element={<NewCategory />} />
+            <Route path="/settings/categories/:id/edit" element={<NewCategory />} />
 
-          <Route path="/incidents/:id/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewIncident />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/sub-categories" element={<SubCategoryList />} />
+            <Route path="/settings/sub-categories/new" element={<NewSubCategory />} />
+            <Route path="/settings/sub-categories/:id/edit" element={<NewSubCategory />} />
 
-          <Route path="/incidents/:id/attachments" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <IncidentAttachments />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/processes" element={<ProcessList />} />
+            <Route path="/settings/processes/new" element={<NewProcess />} />
+            <Route path="/settings/processes/:id/edit" element={<NewProcess />} />
 
-          <Route path="/incidents/:incidentId/tasks/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewTask />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/sub-processes" element={<SubProcessList />} />
+            <Route path="/settings/sub-processes/new" element={<NewSubProcess />} />
+            <Route path="/settings/sub-processes/:id/edit" element={<NewSubProcess />} />
 
-           <Route path="/incidents/:incidentId/tasks/:taskId/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewTask />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/users" element={<UserList />} />
+            <Route path="/settings/users/new" element={<NewUser />} />
+            <Route path="/settings/users/:id/edit" element={<NewUser />} />
 
-          <Route path="/tasks" element={
-             <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-                <TaskList />
-             </ProtectedRoute>
-          } />
+            <Route path="/settings/roles" element={<RoleList />} />
+            <Route path="/settings/roles/new" element={<NewRole />} />
+            <Route path="/settings/roles/:id/edit" element={<NewRole />} />
 
-          <Route path="/pilotage" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              {/* Logic to protect route based on role could be here or inside component */}
-              {user?.role === 'ADMIN' || user?.role === 'MANAGER' ? <Pilotage /> : <Navigate to="/" />}
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/permissions" element={<PermissionList />} />
+            <Route path="/settings/permissions/new" element={<NewPermission />} />
 
-          <Route path="/settings" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <Settings />
-            </ProtectedRoute>
-          } />
+            <Route path="/settings/assignment" element={<RolePermissionAssign />} />
+          </Route>
+        </Route>
 
-          {/* Sites */}
-          <Route path="/settings/sites" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <SiteList />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/sites/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewSite />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/sites/:id/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewSite />
-            </ProtectedRoute>
-          } />
-
-          {/* Categories */}
-          <Route path="/settings/categories" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <CategoryList />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/categories/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewCategory />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/categories/:id/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewCategory />
-            </ProtectedRoute>
-          } />
-
-          {/* SubCategories */}
-          <Route path="/settings/sub-categories" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <SubCategoryList />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/sub-categories/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewSubCategory />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/sub-categories/:id/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewSubCategory />
-            </ProtectedRoute>
-          } />
-
-          {/* Processes */}
-          <Route path="/settings/processes" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized}  onLogout={handleLogout}>
-              <ProcessList />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/processes/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewProcess />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/processes/:id/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewProcess />
-            </ProtectedRoute>
-          } />
-
-          {/* SubProcesses */}
-          <Route path="/settings/sub-processes" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <SubProcessList />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/sub-processes/new" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewSubProcess />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings/sub-processes/:id/edit" element={
-            <ProtectedRoute user={user} authInitialized={authInitialized} onLogout={handleLogout}>
-              <NewSubProcess />
-            </ProtectedRoute>
-          } />
-
-          {/* Catch all redirect */}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </HashRouter>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </ThemeProvider>
   );
 };

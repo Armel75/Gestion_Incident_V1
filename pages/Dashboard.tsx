@@ -21,7 +21,41 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-      setLoading(false);
+    const fetchStats = async () => {
+      try {
+        const data = await api.getSimpleStats();
+
+        setStats(prev => ({
+          ...prev,
+          ...data,
+          byService: [
+            { name: 'IT', value: data.inProgress },
+            { name: 'Contrôle gestion', value: data.inProgress },
+            { name: 'Comptabilité', value: data.inProgress },
+            { name: 'Fiscalité', value: data.inProgress },
+            { name: 'Audit et contrôle', value: data.inProgress },
+            { name: 'Technique', value: data.inProgress },
+            { name: 'Juridique', value: data.inProgress },
+            { name: 'Exploitation', value: data.inProgress },
+            { name: 'Commercial', value: data.inProgress },
+            { name: 'Marketing', value: data.inProgress },
+            { name: 'Logistique', value: data.inProgress },
+          ], // vide pour l'instant
+        byStatus: [
+          { name: 'Ouverts', value: data.open },
+          { name: 'En cours', value: data.inProgress },
+          { name: 'Résolus', value: data.closed },
+          { name: 'Annulés', value: data.cancelled },
+        ],
+        }));
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   if (loading || !stats) {

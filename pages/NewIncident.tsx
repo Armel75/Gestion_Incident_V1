@@ -48,30 +48,6 @@ export const NewIncident: React.FC = () => {
         useState<Record<string, { id: string; name: string }[]>>({});
     const [refsLoaded, setRefsLoaded] = useState(false);
 
-    // useEffect(() => {
-    //     if (isEditMode && id) {
-    //         const fetchIncident = async () => {
-    //             const incident = await api.getIncidentById(id);
-    //             if (incident) {
-    //                 // Populate form with existing data (Simplified mapping)
-    //                 setFormData(prev => ({
-    //                     ...prev,
-    //                     description: incident.description,
-    //                     dueDate: incident.dueDate ? incident.dueDate : '',
-    //                     category: incident.category,
-    //                     //impactedServices: incident.service ? incident.service.split(', ') : [],
-    //                     impactedSites: incident.impactedSites?.map(s => s.name) ?? [],
-    //                     // Note: Other fields would need detailed mapping if they existed in the Incident type
-    //                     // For this exercise, we keep it simple as the type is limited
-    //                     //site: incident.site ? incident.site.split(', ') : []
-    //                     site: incident.sites?.map(s => s.name) ?? [],
-    //                 }));
-    //             }
-    //         };
-    //         fetchIncident();
-    //     }
-    // }, [id, isEditMode]);
-
     useEffect(() => {
         const fetchData = async () => {
             const [sitesData, categoriesData, subCategoriesData, processesData, usersData, subProcessData] = await Promise.all([
@@ -242,11 +218,18 @@ export const NewIncident: React.FC = () => {
     });
 
     // Sous-catégorie
-    if (formData.otherSubCategory) {
-        payload.append('otherSubCategory', formData.otherSubCategory);
-    } else {
-        payload.append('subCategoryId', String(formData.subCategory));
+    if (formData.otherSubCategory?.trim()) {
+    payload.append('otherSubCategory', formData.otherSubCategory.trim());
+    } 
+    else if (formData.subCategory) {
+    payload.append('subCategoryId', String(formData.subCategory));
     }
+
+    // if (formData.otherSubCategory) {
+    //     payload.append('otherSubCategory', formData.otherSubCategory);
+    // } else {
+    //     payload.append('subCategoryId', String(formData.subCategory));
+    // }
 
     // Process
     if (formData.processDomain)
@@ -281,12 +264,19 @@ export const NewIncident: React.FC = () => {
 
     const availableSubCategories = formData.category ? subCategories[formData.category] || [] : [];
     const availableSubProcesses = formData.processDomain ? subProcess[formData.processDomain] || [] : [];
+    
+    const availableUsers = [];
+    // const availableUsers = useMemo(() => {
+    //     if (formData.site.length === 0) return [];
 
-    const availableUsers = useMemo(() => {
-        if (formData.site.length === 0) return [];
+    //     return users
+    //         .filter(user => {
+    //             const userSite = sites.find(s => String(s.id) === String(user.siteId));
+    //             return userSite && formData.site.includes(userSite.name);
+    //         })
+    //         .map(user => user.username);
 
-        return users.map(user => user.username).filter(Boolean);
-    }, [users, formData.site]);
+    // }, [users, formData.site, sites]);
 
 
     return (
@@ -317,7 +307,8 @@ export const NewIncident: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-6 lg:p-10 max-w-5xl mx-auto w-full space-y-8">
+            <div className="flex-1 overflow-visible p-6 lg:p-10 max-w-5xl mx-auto w-full space-y-8">
+
 
                 {/* Section 1: Localisation / Portée */}
                 <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
@@ -416,7 +407,9 @@ export const NewIncident: React.FC = () => {
 
                                         setFormData(prev => ({
                                             ...prev,
-                                            subCategory: selectedSubCategory ? selectedSubCategory.id : ''
+                                            subCategory: selectedSubCategory
+                                            ? String(selectedSubCategory.id)
+                                            : ''
                                         }));
                                     }}
                                     placeholder={
@@ -596,16 +589,6 @@ export const NewIncident: React.FC = () => {
                                     placeholder="Choisir un ou plusieurs sites..."
                                 />
                             </div>
-                            {/* <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service(s) responsable(s) du traitement <span className="text-red-500">*</span></label>
-                                <MultiSelect
-                                    required
-                                    options={sites.map(s => s.name).filter(Boolean)}
-                                    selected={formData.responsibleServices}
-                                    onChange={(vals) => handleMultiSelectChange('responsibleServices', vals)}
-                                    placeholder="Choisir les services..."
-                                />
-                            </div> */}
 
                             <div>
                                 <SearchSelect

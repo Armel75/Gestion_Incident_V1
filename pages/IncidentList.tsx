@@ -3,7 +3,9 @@ import { api } from '../services/api';
 import { Incident } from '../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
-import { Search, ChevronLeft, ChevronRight, Plus, ArrowUpDown, XCircle, FileSpreadsheet, FileText, CheckCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Plus, ArrowUpDown, XCircle, FileSpreadsheet, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../src/types/auth/AuthContext';
+
 const SERVICES_FILTER_OPTIONS = ['IT Infrastructure', 'IT Support', 'Logistique', 'Finance', 'RH', 'Services Généraux'];
 export const IncidentList: React.FC = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -13,12 +15,19 @@ export const IncidentList: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get('status');
+  const { user, isLoading: authLoading } = useAuth();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
   useEffect(() => {
-    fetchIncidents();
-  }, []);
+    if (!authLoading) {
+      fetchIncidents();
+    }
+  }, [authLoading]);
+
   const fetchIncidents = async () => {
     setLoading(true);
     const data = await api.getIncidents();
+    console.log(data);
     const mappedData = data.map(inc => ({
       ...inc,
       reference: `INC-${new Date(inc.createdAt).getFullYear()}-${String(inc.id).padStart(3, '0')}`,
@@ -26,6 +35,7 @@ export const IncidentList: React.FC = () => {
       description: inc.description,
       priority: inc.urgency,
       service: '',
+      serviceEmitter: inc.serviceEmitter,
       assignedTo: null
     }));
     setIncidents(mappedData);
@@ -70,16 +80,6 @@ export const IncidentList: React.FC = () => {
       URL.revokeObjectURL(url);
   };
 
-  // const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
-  //     e.stopPropagation();
-  //     const csvContent = [
-  //         ['Référence', 'Description', 'Statut', 'Priorité', 'Service', 'Créé le'],
-  //         [incident.reference, incident.description, incident.status, incident.urgency, incident.impactedServices, incident.createdAt]
-  //     ].map(e => e.join(",")).join("\n");
-    
-  //     downloadFile(csvContent, `incident_${incident.reference}.csv`, 'text/csv');
-  // };
-
   const handleExportExcel = (e: React.MouseEvent, incident: Incident) => {
     e.stopPropagation();
 
@@ -122,6 +122,7 @@ export const IncidentList: React.FC = () => {
     e.stopPropagation();
 
     try {
+      setDownloadingId(incident.id);
       /**
        * 1️⃣ Appel API métier
        */
@@ -144,6 +145,8 @@ export const IncidentList: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       alert(error.message || 'Impossible de générer le PDF');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -172,15 +175,6 @@ export const IncidentList: React.FC = () => {
     }
   };
 
-  // const handleCloseIncident = async (e: React.MouseEvent, incident: Incident) => {
-  //     e.stopPropagation();
-  //     // Confirmation explicite demandée par les règles métier
-  //     if (window.confirm(`Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`)) {
-  //         await api.updateIncident(incident.id, { status: 'Clôturé' });
-  //         fetchIncidents(); // Refresh list
-  //     }
-  // };
-
   const urgencyToPriority = (urgency: Incident['urgency']) => {
     switch (urgency) {
       case 'Faible':
@@ -196,6 +190,7 @@ export const IncidentList: React.FC = () => {
     }
   };
 
+  
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 transition-colors duration-200">
       {/* Action Bar - Fixed height, integrated borders */}
@@ -245,7 +240,7 @@ export const IncidentList: React.FC = () => {
       </div>
       {/* Table Container - Flex grow to fill space */}
       <div className="flex-1 overflow-auto bg-white dark:bg-slate-900">
-        {loading ? (
+        {loading || authLoading ? (
              <div className="flex flex-col items-center justify-center h-64">
                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-800 dark:border-slate-400"></div>
                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">Chargement des données...</p>
@@ -266,9 +261,15 @@ export const IncidentList: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">
                     <div className="flex items-center gap-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">Priorité <ArrowUpDown className="h-3 w-3" /></div>
                 </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell"
+                >
+                  Service émetteur
+                </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Service traitant</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Assigné</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[280px]">Actions Rapides</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[280px]"></th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-50 dark:divide-slate-800">
@@ -293,11 +294,17 @@ export const IncidentList: React.FC = () => {
                   <td className="px-6 py-3 whitespace-nowrap">
                       <PriorityBadge priority={urgencyToPriority(incident.urgency)} showLabel={true} />
                   </td>
-                  {/* <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {incident.impactedServices}
+                  <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
+                    {incident.serviceEmitter ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                      bg-blue-100 dark:bg-blue-900/40
+                                      text-blue-700 dark:text-blue-300">
+                        {incident.serviceEmitter}
                       </span>
-                  </td> */}
+                    ) : (
+                      <span className="text-slate-400 italic">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {incident.sites && incident.sites.length > 0 ? (
@@ -316,16 +323,6 @@ export const IncidentList: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  {/* <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
-                    {incident.assignedTo ? (
-                        <div className="flex items-center gap-2">
-                            <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
-                                {incident.assignedTo.username.substring(0,2).toUpperCase()}
-                            </div>
-                            <span className="text-xs text-slate-600 dark:text-slate-300">{incident.assignedTo.username}</span>
-                        </div>
-                    ) : <span className="text-xs text-slate-400 italic">--</span>}
-                  </td> */}
                   <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
                     {incident.assignedUsers && incident.assignedUsers.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
@@ -348,10 +345,22 @@ export const IncidentList: React.FC = () => {
                       <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={(e) => handleExportPDF(e, incident)}
+                            disabled={downloadingId === incident.id}
                             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
                             title="Exporter en PDF"
                           >
-                            <FileText className="h-3.5 w-3.5" /> PDF
+                            {/* <FileText className="h-3.5 w-3.5" /> PDF */}
+                            {downloadingId === incident.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Génération...</span>
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="h-4 w-4 text-red-500" />
+                                <span>Export PDF</span>
+                              </>
+                            )}
                           </button>
                           <button
                             onClick={(e) => handleExportExcel(e, incident)}
@@ -360,7 +369,9 @@ export const IncidentList: React.FC = () => {
                           >
                             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
                           </button>
-                          {incident.status !== 'Clôturé' && incident.status !== 'CANCELLED' && (
+                          
+                          {incident.status !== 'CLOSED' && incident.status !== 'CANCELLED' &&
+                            Number(user?.id) === Number(incident.reporterId) && (
                              <button
                                 onClick={(e) => handleCloseIncident(e, incident)}
                                 className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"

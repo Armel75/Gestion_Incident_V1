@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate  } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   AlertCircle,
@@ -16,39 +16,61 @@ import {
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-react';
-import { User } from '../types';
 import { APP_NAME } from '../constants';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../src/types/auth/AuthContext';
 
-interface LayoutProps {
-  children: React.ReactNode;
-  user: User | null;
-  onLogout: () => void;
-}
+export const Layout: React.FC = () => {
 
-export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
-  // Mobile sidebar state
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  // Desktop sidebar collapsed state
-  const [collapsed, setCollapsed] = useState(false);
-  
+  // 🔹 TOUS les hooks en premier
+  const { user, logout, isLoading } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+    
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-slate-800 dark:border-slate-300" />
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            Chargement...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const isAdmin = user?.roles?.includes('ADMIN');
+
+  //const primaryRole = user?.roles?.[0]?.name;
+  const primaryRole = user?.roles?.[0];
 
   const navigation = [
     { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
     { name: 'Incidents', href: '/incidents', icon: AlertCircle },
     { name: 'Mes Tâches', href: '/tasks', icon: CheckSquare },
-    { name: 'Statistiques', href: '/stats', icon: BarChart2 },
   ];
 
-  if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
-    navigation.push({ name: 'Tableau de pilotage', href: '/pilotage', icon: PieChart });
+
+  if (isAdmin) {
+    navigation.push(
+      { name: 'Statistiques', href: '/stats', icon: BarChart2 },
+      { name: 'Tableau de pilotage', href: '/pilotage', icon: PieChart }
+    );
   }
 
   const isActive = (path: string) => {
     if (path === '/' && location.pathname !== '/') return false;
     return location.pathname.startsWith(path);
+  };
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
   };
 
   const NavItem: React.FC<{ item: any }> = ({ item }) => {
@@ -72,7 +94,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       </Link>
     );
   };
-
+  console.log('USER:', user);
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans text-slate-900 dark:text-slate-100 transition-colors duration-200">
       
@@ -121,10 +143,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             ))}
           </nav>
           
-          {!collapsed && <div className="mt-8 mb-2 px-3 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider animate-in fade-in duration-300">Compte</div>}
-          <nav className="space-y-0.5">
-             <NavItem item={{ name: 'Paramètres', href: '/settings', icon: Settings }} />
-          </nav>
+          
+          {/* {!collapsed && <div className="mt-8 mb-2 px-3 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider animate-in fade-in duration-300">Compte</div>} */}
+          {isAdmin && (
+            <>
+              {!collapsed && (
+                <div className="mt-8 mb-2 px-3 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Compte
+                </div>
+              )}
+              <nav className="space-y-0.5">
+                <NavItem item={{ name: 'Paramètres', href: '/settings', icon: Settings }} />
+              </nav>
+            </>
+          )}
         </div>
 
         {/* User Footer */}
@@ -133,18 +165,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             <div className="flex items-center min-w-0">
               <img
                 className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-700"
-                src={user?.avatarUrl || "https://picsum.photos/200"}
+                src="/template/logo.png"
                 alt=""
               />
               {!collapsed && (
                 <div className="ml-3 min-w-0">
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-white">{user?.fullName}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate capitalize">{user?.role.toLowerCase()}</p>
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-white">{user?.username ?? 'Chargement...'}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate capitalize">{primaryRole?.toLowerCase()}</p>
                 </div>
               )}
             </div>
             {!collapsed && (
-              <button onClick={onLogout} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 ml-2">
+              <button onClick={handleLogout} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 ml-2">
                 <LogOut className="h-4 w-4" />
               </button>
             )}
@@ -185,15 +217,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                <div className="flex items-center mb-4 px-2">
                   <img
                     className="h-10 w-10 rounded-full border border-slate-200 dark:border-slate-700"
-                    src={user?.avatarUrl || "https://picsum.photos/200"}
+                    src={"https://picsum.photos/200"}
                     alt=""
                   />
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{user?.fullName}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user?.role?.toLowerCase()}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{user?.username ?? 'Chargement...'}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{primaryRole?.toLowerCase()}</p>
                   </div>
                </div>
-               <button onClick={onLogout} className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
+               <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
                   <LogOut className="mr-3 h-5 w-5" /> Déconnexion
                </button>
              </div>
@@ -243,7 +275,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
         {/* Page Scroll Area */}
         <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 lg:bg-slate-50/50 lg:dark:bg-slate-950">
-           {children}
+           <Outlet />
         </main>
       </div>
     </div>

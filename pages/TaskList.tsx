@@ -59,7 +59,7 @@ export const TaskList: React.FC = () => {
                                          task.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                                          'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                      }`}>
-                                         {task.status === 'TODO' ? 'À faire' : task.status === 'IN_PROGRESS' ? 'En cours' : 'Terminé'}
+                                         {task.status === 'OPEN' ? 'À faire' : task.status === 'IN_PROGRESS' ? 'En cours' : 'Terminé'}
                                      </span>
                                  </div>
                                  {task.description && (
@@ -70,7 +70,7 @@ export const TaskList: React.FC = () => {
                                  <div className="mt-3 flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
                                      <div className="flex items-center gap-1.5">
                                          <Calendar className="h-3.5 w-3.5" />
-                                         {new Date(task.dueDate).toLocaleDateString()}
+                                         {/* {new Date(task.dueDate).toLocaleDateString()} */}
                                      </div>
                                      <div className="flex items-center gap-1.5">
                                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>

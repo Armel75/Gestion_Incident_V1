@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Incident, Task, UserRole } from '../types';
+import { Incident, Task, RolePermission } from '../types';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
-import { ArrowLeft, Calendar, User as UserIcon, CheckSquare, Plus, AlertTriangle, Link as LinkIcon, Clock, Edit2, Trash2, XCircle, FileSpreadsheet, FileText, Paperclip, X, UploadCloud, Upload } from 'lucide-react';
+import { ArrowLeft, Calendar, User as UserIcon, CheckSquare, Plus, AlertTriangle, Link as LinkIcon, Clock, Edit2, Trash2, XCircle, FileSpreadsheet, FileText, Paperclip, X, UploadCloud, Upload, Loader2, Download } from 'lucide-react';
 import { IncidentAttachment } from '@/src/types/attachment';
-
-export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) => {
+import { useAuth } from '../src/types/auth/AuthContext';
+export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRole }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [incident, setIncident] = useState<Incident | undefined>(undefined);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'details' | 'activity'>('details');
-    //const [incidentAttachments, setIncidentAttachments] = useState<string[]>([]);
     const [incidentAttachments, setIncidentAttachments] =
         useState<IncidentAttachment[]>([]);
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -34,22 +35,22 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
     }, [id]);
 
     useEffect(() => {
-    if (!id) return;
+        if (!id) return;
 
-    const fetchAttachments = async () => {
-        try {
-        const attachments = await api.getIncidentAttachments(id);
+        const fetchAttachments = async () => {
+            try {
+                const attachments = await api.getIncidentAttachments(id);
 
-        console.log('ATTACHMENTS API 👉', attachments);
+                console.log('ATTACHMENTS API 👉', attachments);
 
-        setIncidentAttachments(attachments);
-        } catch (err) {
-        console.error('Failed to load attachments', err);
-        setIncidentAttachments([]);
-        }
-    };
+                setIncidentAttachments(attachments);
+            } catch (err) {
+                console.error('Failed to load attachments', err);
+                setIncidentAttachments([]);
+            }
+        };
 
-    fetchAttachments();
+        fetchAttachments();
     }, [id]);
 
     const handleCancelIncident = async () => {
@@ -88,29 +89,63 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
     };
 
     const handleDeleteTask = async (taskId: number) => {
-    const confirmed = window.confirm(
-        "Êtes-vous sûr de vouloir supprimer cette tâche ?"
-    );
-    if (!confirmed) return;
+        const confirmed = window.confirm(
+            "Êtes-vous sûr de vouloir supprimer cette tâche ?"
+        );
+        if (!confirmed) return;
 
-    try {
-        await api.deleteTask(String(taskId)); // API = string URL
-        setTasks(prev => prev.filter(task => task.id !== taskId));
-    } catch (error) {
-        alert("Erreur lors de la suppression de la tâche");
-        console.error(error);
-    }
+        try {
+            await api.deleteTask(String(taskId)); // API = string URL
+            setTasks(prev => prev.filter(task => task.id !== taskId));
+        } catch (error) {
+            alert("Erreur lors de la suppression de la tâche");
+            console.error(error);
+        }
     };
 
     const handleDeleteTaskAttachments = async (taskId: string) => {
-        if (window.confirm("Voulez-vous supprimer toutes les pièces jointes associées à cette tâche ?")) {
-            alert("Pièces jointes supprimées pour la tâche " + taskId);
+        if (!window.confirm("Voulez-vous supprimer toutes les pièces jointes associées à cette tâche ?")) {
+            return;
+        }
+
+        try {
+            await api.deleteTaskAttachments(taskId);
+
+            // Optionnel : rafraîchir la liste
+            setTasks(prev =>
+                prev.map(task =>
+                    task.id === taskId
+                        ? { ...task, attachments: [] }
+                        : task
+                )
+            );
+
+        } catch (error: any) {
+            console.error(error);
+            alert("Erreur lors de la suppression des pièces jointes");
         }
     };
+
 
     const handleAddTaskAttachments = (taskId: string) => {
         // Changed to navigate to the dedicated attachment page for tasks
         navigate(`/incidents/${id}/tasks/${taskId}/attachments`);
+    };
+
+    const handleDownloadTaskAttachments = (task: Task) => {
+        if (!task.attachments || task.attachments.length === 0) {
+            alert("Aucune pièce jointe à télécharger");
+            return;
+        }
+
+        task.attachments.forEach(att => {
+            const link = document.createElement("a");
+            link.href = att.url; // doit être une URL accessible
+            link.download = att.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
     };
 
     const downloadFile = (content: string, fileName: string, mimeType: string) => {
@@ -129,94 +164,129 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
         e.stopPropagation();
 
         const formatValue = (value: any) => {
-        if (value === null || value === undefined) return '';
-        if (value instanceof Date) {
-            return value.toLocaleDateString('fr-FR');
-        }
-        return `"${String(value).replace(/"/g, '""')}"`;
+            if (value === null || value === undefined) return '';
+            if (value instanceof Date) {
+                return value.toLocaleDateString('fr-FR');
+            }
+            return `"${String(value).replace(/"/g, '""')}"`;
         };
 
         const rows = [
-        ['Référence', 'Description', 'Statut', 'Priorité', 'Sites', 'Créé le'],
-        [
-            incident.reference,
-            incident.description,
-            incident.status,
-            incident.urgency,
-            incident.sites.map(s => s.name).join(', ') ?? '',
-            new Date(incident.createdAt),
-        ],
+            ['Référence', 'Description', 'Statut', 'Priorité', 'Sites', 'Créé le'],
+            [
+                incident.reference,
+                incident.description,
+                incident.status,
+                incident.urgency,
+                incident.sites.map(s => s.name).join(', ') ?? '',
+                new Date(incident.createdAt),
+            ],
         ];
 
         const csvContent = rows
-        .map(row => row.map(formatValue).join(';')) // ✅ séparateur Excel FR
-        .join('\n');
+            .map(row => row.map(formatValue).join(';')) // ✅ séparateur Excel FR
+            .join('\n');
 
         downloadFile(
-        csvContent,
-        `incident_${incident.reference}.csv`,
-        'text/csv;charset=utf-8;'
+            csvContent,
+            `incident_${incident.reference}.csv`,
+            'text/csv;charset=utf-8;'
         );
     };
 
+    const handleExportPDF = async (
+        e: React.MouseEvent,
+        incident: Incident
+    ) => {
+        e.stopPropagation();
 
-    const handleExportPDF = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+        try {
 
-    if (!incident) return;
+            setDownloadingId(incident.id);
+            /**
+             * 1️⃣ Appel API métier
+             */
+            const pdfBlob = await api.getIncidentReportPdf(incident.id);
 
-    try {
-        const pdfBlob = await api.getIncidentReportPdf(incident.id);
+            /**
+             * 2️⃣ Téléchargement côté navigateur
+             */
+            const url = URL.createObjectURL(pdfBlob);
 
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `FICHE_INCIDENT_${incident.reference}.pdf`;
+            document.body.appendChild(link);
+            link.click();
 
-        link.href = url;
-        link.download = `FICHE_INCIDENT_${incident.reference}.pdf`;
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
 
-        document.body.appendChild(link);
-        link.click();
-
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    } catch (error: any) {
-        console.error(error);
-        alert(error.message || 'Impossible de générer le PDF');
-    }
+        } catch (error: any) {
+            console.error(error);
+            alert(error.message || 'Impossible de générer le PDF');
+        } finally {
+            setDownloadingId(null);
+        }
     };
 
-    const handleAttachmentClick = (att: IncidentAttachment) => {
-    window.open(att.url, '_blank');
+    const handleAttachmentClick = async (att: IncidentAttachment) => {
+        try {
+            const blob = await api.getIncidentAttachment(
+                incident.id,
+                att.id
+            );
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = att.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error);
+            alert("Impossible de télécharger le fichier");
+        }
     };
 
 
     const handleDeleteIncidentAttachment = async (
-    attachmentId: string,
-    e: React.MouseEvent
+        attachmentId: string,
+        e: React.MouseEvent
     ) => {
-    e.stopPropagation();
+        e.stopPropagation();
 
-    if (!window.confirm("Supprimer la pièce jointe ?")) return;
+        if (!window.confirm("Supprimer la pièce jointe ?")) return;
 
-    const res = await api.deleteIncidentAttachment(incident.id, attachmentId);
+        const res = await api.deleteIncidentAttachment(incident.id, attachmentId);
 
-    if (!res.ok) {
-        console.error('DELETE attachment failed', await res.text());
-        alert("Erreur lors de la suppression");
-        return;
-    }
+        if (!res.ok) {
+            console.error('DELETE attachment failed', await res.text());
+            alert("Erreur lors de la suppression");
+            return;
+        }
 
-    setIncidentAttachments(prev =>
-        prev.filter(att => att.id !== attachmentId)
-    );
+        setIncidentAttachments(prev =>
+            prev.filter(att => att.id !== attachmentId)
+        );
     };
 
     const handleAddIncidentAttachment = () => {
         navigate(`/incidents/${id}/attachments`);
     };
 
-    if (loading) return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-800 dark:border-slate-400"></div></div>;
-    if (!incident) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Incident non trouvé</div>;
+
+    const isPageReady = !loading && !authLoading && !!incident;
+
+    if (!isPageReady) {
+        return (
+            <div className="p-8 flex justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-800 dark:border-slate-400"></div>
+            </div>
+        );
+    }
 
     const PropertyRow = ({ label, value, icon: Icon }: { label: string, value: React.ReactNode, icon?: React.ElementType }) => (
         <div className="flex items-start py-2 group">
@@ -245,6 +315,13 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
         }
     };
 
+    const canManageIncident =
+        !!incident &&
+        !!user &&
+        incident.status !== 'CLOSED' &&
+        incident.status !== 'CANCELLED' &&
+        Number(user.id) === Number(incident.reporterId);
+
     return (
         <div className="flex flex-col h-full bg-white dark:bg-slate-950 lg:bg-slate-50/50 lg:dark:bg-slate-950 transition-colors duration-200">
 
@@ -262,15 +339,26 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={handleExportPDF}
+                        onClick={(e) => handleExportPDF(e, incident)}
+                        disabled={downloadingId === incident.id}
                         className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400 transition-all shadow-sm"
                         title="Générer un fichier PDF"
                     >
-                        <FileText className="h-4 w-4 text-red-500" />
-                        <span>Export PDF</span>
+                        {downloadingId === incident.id ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Génération...</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileText className="h-4 w-4 text-red-500" />
+                                <span>Export PDF</span>
+                            </>
+                        )}
                     </button>
+
                     <button
-                        onClick={handleExportExcel}
+                        onClick={(e) => handleExportExcel(e, incident)}
                         className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-green-600 dark:hover:text-green-400 transition-all shadow-sm mr-4"
                         title="Générer un fichier Excel"
                     >
@@ -278,23 +366,21 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                         <span>Export Excel</span>
                     </button>
 
-                    {userRole === 'ARBITRE' && incident.status !== 'CLOSED' && (
-                        <button className="text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-md border border-red-100 dark:border-red-900/30 flex items-center gap-1.5 transition-colors">
-                            <AlertTriangle className="h-3.5 w-3.5" /> Forcer Clôture
-                        </button>
+                    {canManageIncident && (
+                        <>
+                            <button onClick={handleEditIncident} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 transition-colors">
+                                <Edit2 className="h-3.5 w-3.5" /> Modifier
+                            </button>
+
+                            <button onClick={handleCancelIncident} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 transition-colors">
+                                <XCircle className="h-3.5 w-3.5" /> Annuler
+                            </button>
+
+                            <button onClick={handleDeleteIncident} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md border border-red-100 dark:border-red-900/30 transition-colors">
+                                <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                            </button>
+                        </>
                     )}
-
-                    <button onClick={handleEditIncident} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 transition-colors">
-                        <Edit2 className="h-3.5 w-3.5" /> Modifier
-                    </button>
-
-                    <button onClick={handleCancelIncident} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 transition-colors">
-                        <XCircle className="h-3.5 w-3.5" /> Annuler
-                    </button>
-
-                    <button onClick={handleDeleteIncident} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md border border-red-100 dark:border-red-900/30 transition-colors">
-                        <Trash2 className="h-3.5 w-3.5" /> Supprimer
-                    </button>
                 </div>
             </div>
 
@@ -312,12 +398,6 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                 className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-brand-600 dark:border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
                                 Description & Tâches
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('activity')}
-                                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'activity' ? 'border-brand-600 dark:border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                            >
-                                Activité <span className="ml-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-full"></span>
                             </button>
                         </div>
 
@@ -345,54 +425,36 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                         </button>
                                     </div>
                                     <div className="flex flex-wrap gap-3">
-                                        {/* {incidentAttachments.map(fileName => (
-                                            <div key={fileName} onClick={() => handleAttachmentClick(fileName)} className="relative group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm cursor-pointer bg-white dark:bg-slate-900 transition-all">
+                                        {incidentAttachments.map(att => (
+                                            <div
+                                                key={att.id}
+                                                onClick={() => handleAttachmentClick(att)}
+                                                className="relative group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer"
+                                            >
                                                 <button
-                                                    onClick={(e) => handleDeleteIncidentAttachment(fileName, e)}
-                                                    className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
-                                                    title="Supprimer la pièce jointe"
+                                                    onClick={(e) => handleDeleteIncidentAttachment(att.id, e)}
+                                                    className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full"
                                                 >
                                                     <X className="h-3 w-3" />
                                                 </button>
-                                                <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
-                                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">PNG</span>
+
+                                                <div className="h-10 w-10 bg-slate-100 rounded flex items-center justify-center">
+                                                    <span className="text-[10px] font-bold">
+                                                        {att.mimeType?.split('/')?.[1]?.toUpperCase() ?? 'FILE'}
+                                                    </span>
                                                 </div>
+
                                                 <div>
-                                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-brand-600 dark:group-hover:text-brand-400">{fileName}</p>
-                                                    <p className="text-xs text-slate-400 dark:text-slate-500"></p>
+                                                    <p className="text-sm font-medium">{att.fileName}</p>
                                                 </div>
                                             </div>
-                                        ))} */}
-                                        {incidentAttachments.map(att => (
-                                        <div
-                                            key={att.id}
-                                            onClick={() => handleAttachmentClick(att)}
-                                            className="relative group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer"
-                                        >
-                                            <button
-                                            onClick={(e) => handleDeleteIncidentAttachment(att.id, e)}
-                                            className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full"
-                                            >
-                                            <X className="h-3 w-3" />
-                                            </button>
-
-                                            <div className="h-10 w-10 bg-slate-100 rounded flex items-center justify-center">
-                                            <span className="text-[10px] font-bold">
-                                                {att.mimeType?.split('/')?.[1]?.toUpperCase() ?? 'FILE'}
-                                            </span>
-                                            </div>
-
-                                            <div>
-                                            <p className="text-sm font-medium">{att.fileName}</p>
-                                            </div>
-                                        </div>
                                         ))}
                                         {incidentAttachments.length === 0 && <span className="text-sm text-slate-400 italic">Aucune pièce jointe.</span>}
                                     </div>
                                 </div>
 
                                 {/* Tasks */}
-                                <div>
+                                {/* <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Sous-tâches</h3>
                                         <button onClick={handleAddTask} className="text-xs bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm">
@@ -409,7 +471,7 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/4">Titre</th>
                                                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
                                                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Échéance</th>
-                                                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[280px]">Actions</th>
+                                                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
@@ -449,6 +511,19 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                                                             <Upload className="h-3 w-3" /> Ajouter P.J.
                                                                         </button>
                                                                         <button
+                                                                        onClick={() => handleDownloadTaskAttachments(task)}
+                                                                        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium
+                                                                                    text-green-700 bg-green-50 hover:bg-green-100
+                                                                                    border border-green-200 rounded transition-colors
+                                                                                    dark:bg-green-900/30 dark:text-green-300
+                                                                                    dark:border-green-800 dark:hover:bg-green-900/50"
+                                                                        title="Télécharger les pièces jointes de cette tâche"
+                                                                        >
+                                                                        <Download className="h-3 w-3" />
+                                                                        Télécharger P.J.
+                                                                        </button>
+
+                                                                        <button
                                                                             onClick={() => handleDeleteTaskAttachments(task.id)}
                                                                             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded transition-colors dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-900/50"
                                                                             title="Supprimer toutes les pièces jointes de cette tâche"
@@ -480,7 +555,134 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                             </table>
                                         )}
                                     </div>
+                                </div> */}
+
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                            Sous-tâches
+                                        </h3>
+                                        <button
+                                            onClick={handleAddTask}
+                                            className="text-xs bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm"
+                                        >
+                                            <Plus className="h-3 w-3" /> Ajouter tâche
+                                        </button>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto">
+                                        {tasks.length === 0 ? (
+                                            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+                                                Aucune tâche associée
+                                            </div>
+                                        ) : (
+                                            <table className="w-full table-fixed divide-y divide-slate-200 dark:divide-slate-800">
+                                                <thead className="bg-slate-50 dark:bg-slate-950">
+                                                    <tr>
+                                                        <th className="w-24 px-2 py-3 text-left text-xs uppercase">
+                                                            Titre
+                                                        </th>
+
+                                                        <th className="w-28 px-2 py-3 text-left text-xs uppercase">
+                                                            Description
+                                                        </th>
+
+                                                        <th className="w-[400px] px-2 py-3 text-right text-xs uppercase">
+                                                            Actions
+                                                        </th>
+
+                                                        <th className="w-24 px-2 py-3 text-left text-xs uppercase">
+                                                            Échéance
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                                    {tasks.map((task) => (
+                                                        <tr
+                                                            key={task.id}
+                                                            className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                        >
+                                                            <td className="px-2 py-3 align-top">
+                                                                <span
+                                                                    className={`text-sm font-medium whitespace-pre-wrap break-words ${task.status === 'DONE'
+                                                                            ? 'text-slate-400 dark:text-slate-600 line-through'
+                                                                            : 'text-slate-900 dark:text-slate-100'
+                                                                        }`}
+                                                                >
+                                                                    {task.name}
+                                                                </span>
+                                                            </td>
+
+
+                                                            <td className="px-2 py-3 align-top">
+                                                                <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap break-words">
+                                                                    {task.description || '-'}
+                                                                </span>
+                                                            </td>
+
+
+                                                            <td className="px-4 py-4 align-top text-right">
+                                                                <div className="flex flex-col gap-2 items-end">
+                                                                    <button
+                                                                        onClick={() => handleAddTaskAttachments(task.id)}
+                                                                        className="w-40 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                                                                    >
+                                                                        <Upload className="h-3 w-3 inline mr-1" />
+                                                                        Ajouter P.J.
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() => handleDownloadTaskAttachments(task)}
+                                                                        className="w-40 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50"
+                                                                    >
+                                                                        <Download className="h-3 w-3 inline mr-1" />
+                                                                        Télécharger
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() => handleDeleteTaskAttachments(task.id)}
+                                                                        className="w-40 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-900/50"
+                                                                    >
+                                                                        <X className="h-3 w-3 inline mr-1" />
+                                                                        Vider
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() => handleEditTask(task.id)}
+                                                                        className="w-40 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700"
+                                                                    >
+                                                                        <Edit2 className="h-3 w-3 inline mr-1" />
+                                                                        Modifier
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() => handleDeleteTask(task.id)}
+                                                                        className="w-40 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3 inline mr-1" />
+                                                                        Supprimer
+                                                                    </button>
+
+                                                                </div>
+                                                            </td>
+
+                                                            <td className="px-4 py-3 whitespace-nowrap align-top">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                                                    <span className="text-xs text-slate-600 dark:text-slate-300">
+                                                                        {new Date(incident.dueDate).toISOString().slice(0, 10)}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
                                 </div>
+
                             </div>
                         ) : (
                             <div className="py-10 text-center text-slate-400 dark:text-slate-600 text-sm bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 border-dashed">
@@ -501,21 +703,6 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                     label="Priorité"
                                     value={<PriorityBadge priority={urgencyToPriority(incident.urgency)} />}
                                 />
-                                {/* <PropertyRow label="Site(s) concerné(s)" value={
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-5 w-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                            {incident.sites?.map(site => site.name).join(', ')}
-                                        </div>
-                                    </div>
-                                } /> */}
-                                {/* <PropertyRow
-                                    label="Site(s) concerné(s)"
-                                    value={
-                                        incident.sites?.length
-                                            ? incident.sites.map(site => site.name).join(', ')
-                                            : '—'
-                                    }
-                                /> */}
                                 <PropertyRow
                                     label="Site(s) traitant(s)"
                                     value={
@@ -534,14 +721,6 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                     }
                                 />
 
-                                {/* <PropertyRow label="Assigné à" value={
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-5 w-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                            {incident.assignedTo?.username?.substring(0, 1)}
-                                        </div>
-                                        <span>{incident.assignedTo?.username || 'Unassigned'}</span>
-                                    </div>
-                                } icon={UserIcon} /> */}
                                 <PropertyRow
                                     label="Assigné à"
                                     icon={UserIcon}
@@ -563,7 +742,7 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                     }
                                 />
 
-                                <PropertyRow label="Site(s) concerné(s)" 
+                                <PropertyRow label="Site(s) concerné(s)"
                                     value={
                                         <div className="flex flex-wrap gap-1">
                                             {incident.impactedSites?.length
@@ -578,7 +757,7 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                                 : '—'}
                                         </div>
                                     }
-                                 />
+                                />
                                 <PropertyRow label="Échéance" value={new Date(incident.dueDate).toLocaleDateString()} icon={Calendar} />
                                 <PropertyRow label="Créé le" value={new Date(incident.createdAt).toLocaleDateString()} icon={Clock} />
                             </div>
@@ -587,7 +766,7 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                         <div className="bg-white dark:bg-slate-900 lg:bg-transparent lg:dark:bg-transparent rounded-lg p-4 lg:p-0 border lg:border-0 border-slate-200 dark:border-slate-800 shadow-sm lg:shadow-none">
                             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Contexte</h3>
                             <div className="space-y-1">
-                                <PropertyRow label="Site(s) concerné(s)" 
+                                <PropertyRow label="Site(s) concerné(s)"
                                     value={
                                         <div className="flex flex-wrap gap-1">
                                             {incident.impactedSites?.length
@@ -602,7 +781,7 @@ export const IncidentDetail: React.FC<{ userRole: UserRole }> = ({ userRole }) =
                                                 : '—'}
                                         </div>
                                     }
-                                 />
+                                />
                                 <PropertyRow label="Catégorie" value={incident.category ?? '—'} />
                                 <PropertyRow label="Sous Catégorie" value={incident.subCategory ?? '—'} />
                                 <PropertyRow label="Processus" value={incident.processDomain ?? '—'} />
