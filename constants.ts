@@ -1,4 +1,4 @@
-export const APP_NAME = "IncidentManager";
+export const APP_NAME = "Tracking Incident";
 
 // Updated styles to work in both Light and Dark modes
 // We use classes that adapt (like text-slate-700 dark:text-slate-300)

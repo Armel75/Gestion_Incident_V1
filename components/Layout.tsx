@@ -19,6 +19,7 @@ import {
 import { APP_NAME } from '../constants';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../src/types/auth/AuthContext';
+import logo from '@/template/logo.png';
 
 export const Layout: React.FC = () => {
 
@@ -217,7 +218,7 @@ export const Layout: React.FC = () => {
                <div className="flex items-center mb-4 px-2">
                   <img
                     className="h-10 w-10 rounded-full border border-slate-200 dark:border-slate-700"
-                    src={"https://picsum.photos/200"}
+                    src={logo}
                     alt=""
                   />
                   <div className="ml-3">

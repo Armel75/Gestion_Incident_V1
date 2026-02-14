@@ -16,6 +16,7 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
     const [incidentAttachments, setIncidentAttachments] =
         useState<IncidentAttachment[]>([]);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
+    const [downloadingTaskId, setDownloadingTaskId] = useState<string | null>(null);
     const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
@@ -132,20 +133,50 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
         navigate(`/incidents/${id}/tasks/${taskId}/attachments`);
     };
 
-    const handleDownloadTaskAttachments = (task: Task) => {
+    // const handleDownloadTaskAttachments = (task: Task) => {
+    //     if (!task.attachments || task.attachments.length === 0) {
+    //         alert("Aucune pièce jointe à télécharger");
+    //         return;
+    //     }
+
+    //     task.attachments.forEach(att => {
+    //         const link = document.createElement("a");
+    //         link.href = att.url; // doit être une URL accessible
+    //         link.download = att.fileName;
+    //         document.body.appendChild(link);
+    //         link.click();
+    //         document.body.removeChild(link);
+    //     });
+    // };
+
+
+    const handleDownloadTaskAttachments = async (task: Task) => {
         if (!task.attachments || task.attachments.length === 0) {
             alert("Aucune pièce jointe à télécharger");
             return;
         }
 
-        task.attachments.forEach(att => {
-            const link = document.createElement("a");
-            link.href = att.url; // doit être une URL accessible
-            link.download = att.fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
+        try {
+            setDownloadingTaskId(task.id);
+
+            // 🔥 Laisse React re-render avant de continuer
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            for (const att of task.attachments) {
+                const link = document.createElement("a");
+                link.href = att.url;
+                link.download = att.fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Erreur lors du téléchargement");
+        } finally {
+            setDownloadingTaskId(null);
+        }
     };
 
     const downloadFile = (content: string, fileName: string, mimeType: string) => {
@@ -454,109 +485,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                 </div>
 
                                 {/* Tasks */}
-                                {/* <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Sous-tâches</h3>
-                                        <button onClick={handleAddTask} className="text-xs bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm">
-                                            <Plus className="h-3 w-3" /> Ajouter tâche
-                                        </button>
-                                    </div>
-                                    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                                        {tasks.length === 0 ? (
-                                            <div className="p-8 text-center text-slate-500 dark:text-slate-400">Aucune tâche associée</div>
-                                        ) : (
-                                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                                                <thead className="bg-slate-50 dark:bg-slate-950">
-                                                    <tr>
-                                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/4">Titre</th>
-                                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
-                                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Échéance</th>
-                                                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                                                    {tasks.map((task) => (
-                                                        <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                                            <td className="px-4 py-3 align-top">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className={`flex-shrink-0 h-4 w-4 rounded border ${task.status === 'DONE' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent'} flex items-center justify-center`}>
-                                                                        <CheckSquare className="h-3 w-3 fill-current" />
-                                                                    </div>
-                                                                    <span className={`text-sm font-medium ${task.status === 'DONE' ? 'text-slate-400 dark:text-slate-600 line-through' : 'text-slate-900 dark:text-slate-100'}`}>
-                                                                        {task.name}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 align-top">
-                                                                <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                                                                    {task.description || '-'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap align-top">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                                                                    <span className="text-xs text-slate-600 dark:text-slate-300">
-                                                                        {new Date(incident.dueDate).toISOString().slice(0, 10)}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-right align-top">
-                                                                <div className="flex flex-col gap-2 items-end sm:flex-row sm:items-center sm:justify-end sm:flex-wrap">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => handleAddTaskAttachments(task.id)}
-                                                                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
-                                                                            title="Ajouter des pièces jointes à cette tâche"
-                                                                        >
-                                                                            <Upload className="h-3 w-3" /> Ajouter P.J.
-                                                                        </button>
-                                                                        <button
-                                                                        onClick={() => handleDownloadTaskAttachments(task)}
-                                                                        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium
-                                                                                    text-green-700 bg-green-50 hover:bg-green-100
-                                                                                    border border-green-200 rounded transition-colors
-                                                                                    dark:bg-green-900/30 dark:text-green-300
-                                                                                    dark:border-green-800 dark:hover:bg-green-900/50"
-                                                                        title="Télécharger les pièces jointes de cette tâche"
-                                                                        >
-                                                                        <Download className="h-3 w-3" />
-                                                                        Télécharger P.J.
-                                                                        </button>
-
-                                                                        <button
-                                                                            onClick={() => handleDeleteTaskAttachments(task.id)}
-                                                                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded transition-colors dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-900/50"
-                                                                            title="Supprimer toutes les pièces jointes de cette tâche"
-                                                                        >
-                                                                            <X className="h-3 w-3" /> Vider P.J.
-                                                                        </button>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => handleEditTask(task.id)}
-                                                                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded transition-colors dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700"
-                                                                            title="Modifier les informations de la tâche"
-                                                                        >
-                                                                            <Edit2 className="h-3 w-3" /> Modifier
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleDeleteTask(task.id)}
-                                                                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
-                                                                            title="Supprimer définitivement la tâche"
-                                                                        >
-                                                                            <Trash2 className="h-3 w-3" /> Supprimer
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        )}
-                                    </div>
-                                </div> */}
-
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -631,12 +559,31 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                                                         Ajouter P.J.
                                                                     </button>
 
-                                                                    <button
+                                                                    {/* <button
                                                                         onClick={() => handleDownloadTaskAttachments(task)}
                                                                         className="w-40 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50"
                                                                     >
                                                                         <Download className="h-3 w-3 inline mr-1" />
                                                                         Télécharger
+                                                                    </button> */}
+                                                                    <button
+                                                                        onClick={() => handleDownloadTaskAttachments(task)}
+                                                                        disabled={downloadingTaskId === task.id}
+                                                                        className="w-40 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded 
+                                                                                dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50 
+                                                                                disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                                                                    >
+                                                                        {downloadingTaskId === task.id ? (
+                                                                            <>
+                                                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                                                Téléchargement...
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Download className="h-3 w-3" />
+                                                                                Télécharger
+                                                                            </>
+                                                                        )}
                                                                     </button>
 
                                                                     <button
@@ -783,7 +730,15 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                     }
                                 />
                                 <PropertyRow label="Catégorie" value={incident.category ?? '—'} />
-                                <PropertyRow label="Sous Catégorie" value={incident.subCategory ?? '—'} />
+                                {/* <PropertyRow label="Sous Catégorie" value={incident.subCategory ?? '—'} /> */}
+                                <PropertyRow
+                                    label="Sous Catégorie"
+                                    value={
+                                        incident.subCategory
+                                        ?? incident.otherSubCategory
+                                        ?? '—'
+                                    }
+                                />
                                 <PropertyRow label="Processus" value={incident.processDomain ?? '—'} />
                                 <PropertyRow label="Sous Processus" value={incident.subProcess ?? '—'} />
                                 <PropertyRow label="Périmètre" value={incident.scope ?? '—'} />

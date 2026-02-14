@@ -70,7 +70,8 @@ export interface Incident {
   processDomainId?: string;
   sites: Site[];
   impactedSites: Site[];
-  assignedUsers?: User[];
+  //assignedUsers?: User[];
+  personnes?: Personne[];
   serviceEmitter?: string | null;
 }
 
@@ -175,3 +176,19 @@ export interface Attachment {
   taskId: number | null;
   uploadedAt: Date; // ou string si tu récupères une date ISO depuis l’API
 }
+
+export interface Personne {
+  id: number;
+  fullname: string;
+  createdAt: string;   // JSON → string côté front
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export type CreatePersonneDTO = {
+  fullname: string;
+};
+
+export type UpdatePersonneDTO = Partial<{
+  fullname: string;
+}>;

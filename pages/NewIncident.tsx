@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { ArrowLeft, Save, Paperclip } from 'lucide-react';
-import { Category, Incident, Priority, Process, SubCategory, User } from '../types';
+import { Category, Incident, Priority, Process, SubCategory, User, Personne } from '../types';
 import { MultiSelect } from '../components/ui/MultiSelect';
 import { SearchSelect } from '../components/ui/SearchSelect';
 
@@ -33,7 +33,8 @@ export const NewIncident: React.FC = () => {
         criticality: 'Moyenne',
         urgency: 'Moyenne',
         responsibleServices: [] as string[],
-        assignedUsers: [] as string[],
+        //assignedUsers: [] as string[],
+        personnes: [] as string[],
         dueDate: '',
         attachments: [] as File[],
     });
@@ -43,23 +44,26 @@ export const NewIncident: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<Record<string, SubCategory[]>>({});
     const [processDomains, setProcessDomains] = useState<Process[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
+    //const [users, setUsers] = useState<User[]>([]);
+    const [personnes, setPersonnes] = useState<Personne[]>([]);
     const [subProcess, setSubProcess] =
         useState<Record<string, { id: string; name: string }[]>>({});
     const [refsLoaded, setRefsLoaded] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
-            const [sitesData, categoriesData, subCategoriesData, processesData, usersData, subProcessData] = await Promise.all([
+            const [sitesData, categoriesData, subCategoriesData, processesData, usersData, subProcessData, personnesData] = await Promise.all([
                 api.getSites(),
                 api.getCategories(),
                 api.getSubCategories(),
                 api.getProcesses(),
                 api.getUsers(),
                 api.getSubProcesses(),
+                api.getPersonnes(),
             ]);
             setSites(sitesData);
             setCategories(categoriesData);
+            setPersonnes(personnesData);
             console.log('Exemple site ID type:', typeof sites[0]?.id);
 
             // Debugs
@@ -94,7 +98,7 @@ export const NewIncident: React.FC = () => {
             setSubProcess(groupedSubProcesses);
 
             setProcessDomains(processesData);
-            setUsers(usersData);
+            //setUsers(usersData);
             //setSubProcess(subProcessData);
             setRefsLoaded(true);
         };
@@ -131,7 +135,9 @@ export const NewIncident: React.FC = () => {
         criticality: incident.criticality ?? 'Moyenne',
         urgency: incident.urgency ?? 'Moyenne',
 
-        assignedUsers: incident.assignedUsers?.map(u => u.username) ?? [],
+        //assignedUsers: incident.assignedUsers?.map(u => u.username) ?? [],
+        personnes: incident.personnes?.map(p => p.fullname) ?? [],
+
         responsibleServices: [],
 
         attachments: [],
@@ -239,9 +245,16 @@ export const NewIncident: React.FC = () => {
         payload.append('subProcessId', String(formData.subProcessId));
 
     // Assignés
-    formData.assignedUsers.forEach(u => {
-        const user = users.find(us => us.username === u || us.fullName === u);
-        if (user) payload.append('assignedUserIds', String(user.id));
+    // formData.assignedUsers.forEach(u => {
+    //     const user = users.find(us => us.username === u || us.fullName === u);
+    //     if (user) payload.append('assignedUserIds', String(user.id));
+    // });
+
+    formData.personnes.forEach(fullname => {
+        const personne = personnes.find(p => p.fullname === fullname);
+        if (personne) {
+            payload.append('personneIds', String(personne.id));
+        }
     });
 
     // 🔥 FICHIERS
@@ -265,18 +278,29 @@ export const NewIncident: React.FC = () => {
     const availableSubCategories = formData.category ? subCategories[formData.category] || [] : [];
     const availableSubProcesses = formData.processDomain ? subProcess[formData.processDomain] || [] : [];
     
-    const availableUsers = [];
-    // const availableUsers = useMemo(() => {
-    //     if (formData.site.length === 0) return [];
+    //const availablePersonnes = [];
 
-    //     return users
-    //         .filter(user => {
-    //             const userSite = sites.find(s => String(s.id) === String(user.siteId));
-    //             return userSite && formData.site.includes(userSite.name);
-    //         })
-    //         .map(user => user.username);
+    const availablePersonnes = useMemo(() => {
+        if (formData.site.length === 0) return [];
 
-    // }, [users, formData.site, sites]);
+        return personnes.map(p => p.fullname);
+
+    }, [personnes, formData.site]);
+
+    // const availablePersonnes = useMemo(() => {
+    // if (formData.site.length === 0) return [];
+
+    // return personnes
+    //     .filter(personne => {
+    //     const personneSite = sites.find(
+    //         s => String(s.id) === String(personne.siteId)
+    //     );
+
+    //     return personneSite && formData.site.includes(personneSite.name);
+    //     })
+    //     .map(personne => personne.fullname);
+
+    // }, [personnes, formData.site, sites]);
 
 
     return (
@@ -396,7 +420,6 @@ export const NewIncident: React.FC = () => {
                                     label="Sous-catégorie"
                                     options={availableSubCategories.map(sc => sc.name)}
                                     value={
-                                        //availableSubCategories.find(sc => sc.id === formData.subCategory)?.name || ''
                                         availableSubCategories.find(
                                             sc => String(sc.id) === formData.subCategory
                                         )?.name || ''
@@ -421,7 +444,7 @@ export const NewIncident: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    {availableSubCategories.find(sc => sc.id === formData.subCategory)?.name === 'Autre' && (
+                    {availableSubCategories.find(sc => String(sc.id) === String(formData.subCategory))?.name === 'Autre' && (
                         <div className="md:col-span-2 animate-in fade-in slide-in-from-top-2">
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                 Précision (Sous-catégorie non listée)
@@ -591,7 +614,7 @@ export const NewIncident: React.FC = () => {
                             </div>
 
                             <div>
-                                <SearchSelect
+                                {/* <SearchSelect
                                     label="Employé assigné"
                                     options={availableUsers}
                                     value={formData.assignedUsers[0] || ''}
@@ -606,7 +629,19 @@ export const NewIncident: React.FC = () => {
                                             ? "Rechercher un utilisateur..."
                                             : "Sélectionner un site d'abord"
                                     }
+                                /> */}
+                                <MultiSelect
+                                    label="Personnes assignées"
+                                    options={availablePersonnes}
+                                    selected={formData.personnes}
+                                    onChange={(vals) => handleMultiSelectChange('personnes', vals)}
+                                    placeholder={
+                                        formData.site.length > 0
+                                        ? "Sélectionner une ou plusieurs personnes..."
+                                        : "Sélectionner un service d'abord"
+                                    }
                                 />
+
                             </div>
 
                         </div>

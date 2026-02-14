@@ -33,6 +33,8 @@ import { RolePermissionAssign } from './pages/admin/RolePermissionAssign';
 import { NewUser } from './pages/admin/NewUser';
 import { NewRole } from './pages/admin/NewRole';
 import { NewPermission } from './pages/admin/NewPermission';
+import { NewPersonne } from './pages/NewPersonne';
+import { PersonneList } from './pages/Personnelist';
 
 const App: React.FC = () => {
   return (
@@ -87,6 +89,11 @@ const App: React.FC = () => {
 
             <Route path="/settings/permissions" element={<PermissionList />} />
             <Route path="/settings/permissions/new" element={<NewPermission />} />
+
+
+            <Route path="/settings/personnes" element={<PersonneList />} />
+            <Route path="/settings/personnes/new" element={<NewPersonne />} />
+            <Route path="/settings/personnes/:id/edit" element={<NewPersonne />} />
 
             <Route path="/settings/assignment" element={<RolePermissionAssign />} />
           </Route>

@@ -36,7 +36,7 @@ export const IncidentList: React.FC = () => {
       priority: inc.urgency,
       service: '',
       serviceEmitter: inc.serviceEmitter,
-      assignedTo: null
+      //assignedTo: null
     }));
     setIncidents(mappedData);
     setLoading(false);
@@ -324,7 +324,7 @@ export const IncidentList: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
-                    {incident.assignedUsers && incident.assignedUsers.length > 0 ? (
+                    {/* {incident.assignedUsers && incident.assignedUsers.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {incident.assignedUsers.map(user => (
                           <div key={user.id} className="flex items-center gap-2">
@@ -333,6 +333,22 @@ export const IncidentList: React.FC = () => {
                             </div>
                             <span className="text-xs text-slate-600 dark:text-slate-300">
                               {user.username}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">—</span>
+                    )} */}
+                    {incident.personnes && incident.personnes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                        {incident.personnes.map(personne => (
+                          <div key={personne.id} className="flex items-center gap-2">
+                            <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+                              {personne.fullname.substring(0, 2).toUpperCase()}
+                            </div>
+                            <span className="text-xs text-slate-600 dark:text-slate-300">
+                              {personne.fullname}
                             </span>
                           </div>
                         ))}

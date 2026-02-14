@@ -16,6 +16,7 @@ export const Settings: React.FC = () => {
 
   const adminItems = [
       { title: 'Utilisateurs', description: 'Gérer les comptes utilisateurs', icon: Users, path: '/settings/users' },
+      { title: 'Personnes', description: 'Gérer les fiches personnes', icon: Users, path: '/settings/personnes' },
       { title: 'Rôles', description: 'Définir les rôles applicatifs', icon: Shield, path: '/settings/roles' },
       { title: 'Permissions', description: 'Liste des droits d\'accès', icon: Key, path: '/settings/permissions' },
       { title: 'Assignation', description: 'Lier permissions et rôles', icon: Lock, path: '/settings/assignment' },

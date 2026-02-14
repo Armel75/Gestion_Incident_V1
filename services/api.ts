@@ -1,4 +1,4 @@
-import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO } from '../types';
+import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne  } from '../types';
 import { MOCK_DELAY } from '../constants';
 import { IncidentAttachment } from '@/src/types/attachment';
 import { AppJwtPayload } from '../src/types/auth/jwt.types';
@@ -1070,6 +1070,75 @@ export const api = {
 
     return response.blob();
   },
+
+// --- Personne Methods ---
+
+getPersonnes: async (): Promise<Personne[]> => {
+  const response = await apiFetch('/personnes', {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur chargement personnes');
+  }
+
+  return response.json();
+},
+
+getPersonneById: async (id: number): Promise<Personne> => {
+  const response = await apiFetch(`/personnes/${id}`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    throw new Error('Personne introuvable');
+  }
+
+  return response.json();
+},
+
+createPersonne: async (
+  data: { fullname: string }
+): Promise<Personne> => {
+  const response = await apiFetch('/personnes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error?.message || 'Erreur création personne');
+  }
+
+  return response.json();
+},
+
+updatePersonne: async (
+  id: number,
+  data: { fullname: string }
+): Promise<Personne> => {
+  const response = await apiFetch(`/personnes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur modification personne');
+  }
+
+  return response.json();
+},
+
+deletePersonne: async (id: number): Promise<void> => {
+  const response = await apiFetch(`/personnes/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur suppression personne');
+  }
+},
+
 
   getSimpleStats: async (): Promise<{
     open: number;
