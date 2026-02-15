@@ -1,12 +1,21 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
+type Primitive = string | number;
+
+type OptionObject = {
+  label: string;
+  value: Primitive;
+};
+
+type Option = string | OptionObject;
+
 interface MultiSelectProps {
   label?: string;
-  options: string[];
-  selected: string[];
+  options: Option[];
+  selected: Primitive[];
   required?: boolean;
   placeholder?: string;
-  onChange: (values: string[]) => void;
+  onChange: (values: Primitive[]) => void;
 }
 
 export const MultiSelect: React.FC<MultiSelectProps> = ({
@@ -21,19 +30,30 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const filteredOptions = useMemo(() => {
-    return options
-      .filter(o => !selected.includes(o))
-      .filter(o => o.toLowerCase().includes(query.toLowerCase()));
-  }, [options, selected, query]);
+  // 🔥 Normalisation des options (support string OU object)
+  const normalizedOptions: OptionObject[] = useMemo(() => {
+    return options.map(opt =>
+      typeof opt === 'string'
+        ? { label: opt, value: opt }
+        : opt
+    );
+  }, [options]);
 
-  const addValue = (value: string) => {
+  const filteredOptions = useMemo(() => {
+    return normalizedOptions
+      .filter(o => !selected.includes(o.value))
+      .filter(o =>
+        o.label.toLowerCase().includes(query.toLowerCase())
+      );
+  }, [normalizedOptions, selected, query]);
+
+  const addValue = (value: Primitive) => {
     onChange([...selected, value]);
     setQuery('');
     setOpen(true);
   };
 
-  const removeValue = (value: string) => {
+  const removeValue = (value: Primitive) => {
     onChange(selected.filter(v => v !== value));
   };
 
@@ -56,25 +76,28 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
       )}
 
       <div className="flex flex-wrap gap-1 mb-1">
-        {selected.map(val => (
-          <span
-            key={val}
-            className="
-              px-2 py-1 text-sm rounded flex items-center gap-1
-              bg-slate-200 text-slate-900
-              dark:bg-slate-700 dark:text-white
-            "
-          >
-            {val}
-            <button
-              type="button"
-              onClick={() => removeValue(val)}
-              className="text-xs hover:opacity-70"
+        {selected.map(val => {
+          const option = normalizedOptions.find(o => o.value === val);
+          return (
+            <span
+              key={String(val)}
+              className="
+                px-2 py-1 text-sm rounded flex items-center gap-1
+                bg-slate-200 text-slate-900
+                dark:bg-slate-700 dark:text-white
+              "
             >
-              ✕
-            </button>
-          </span>
-        ))}
+              {option?.label ?? val}
+              <button
+                type="button"
+                onClick={() => removeValue(val)}
+                className="text-xs hover:opacity-70"
+              >
+                ✕
+              </button>
+            </span>
+          );
+        })}
       </div>
 
       <input
@@ -101,15 +124,15 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         >
           {filteredOptions.map(option => (
             <li
-              key={option}
-              onClick={() => addValue(option)}
+              key={String(option.value)}
+              onClick={() => addValue(option.value)}
               className="
                 cursor-pointer px-3 py-2 text-sm
                 text-slate-900 hover:bg-slate-100
                 dark:text-slate-200 dark:hover:bg-slate-700
               "
             >
-              {option}
+              {option.label}
             </li>
           ))}
         </ul>

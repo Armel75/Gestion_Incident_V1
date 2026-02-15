@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, UploadCloud } from 'lucide-react';
+import { api } from '../services/api';
 
 export const TaskAttachments: React.FC = () => {
   const { incidentId, taskId } = useParams<{ incidentId: string; taskId: string }>();
@@ -14,14 +15,40 @@ export const TaskAttachments: React.FC = () => {
     }
   };
 
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   // Simulating API call delay for task attachment upload
+  //   setTimeout(() => {
+  //       setLoading(false);
+  //       navigate(`/incidents/${incidentId}`);
+  //   }, 800);
+  // };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    // Simulating API call delay for task attachment upload
-    setTimeout(() => {
-        setLoading(false);
-        navigate(`/incidents/${incidentId}`);
-    }, 800);
+
+    if (!taskId) return;
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+
+      files.forEach(file => {
+        formData.append("attachments", file); // ⚠️ doit correspondre à upload.array("files")
+      });
+
+      await api.addTaskAttachments(taskId, formData);
+
+      navigate(`/incidents/${incidentId}`);
+
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de l’envoi des pièces jointes");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -86,13 +86,13 @@ export const Dashboard: React.FC = () => {
       {/* KPIs - Using a tighter grid and making them clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div onClick={() => handleCardClick('OPEN')} className="cursor-pointer transform transition hover:-translate-y-1">
-          <KPICard title="Incidents Ouverts" value={stats.open} icon={AlertCircle} trend="+2 vs hier" />
+          <KPICard title="Incidents Ouverts" value={stats.open} icon={AlertCircle} trend="" />
         </div>
         <div onClick={() => handleCardClick('IN_PROGRESS')} className="cursor-pointer transform transition hover:-translate-y-1">
-          <KPICard title="En Cours" value={stats.inProgress} icon={Clock} />
+          <KPICard title="En Cours" value={stats.open} icon={Clock} />
         </div>
         <div onClick={() => handleCardClick('RESOLVED')} className="cursor-pointer transform transition hover:-translate-y-1">
-          <KPICard title="Résolus (Mois)" value={stats.closed} icon={CheckCircle2} trend="+12%" trendUp />
+          <KPICard title="Résolus (Mois)" value={stats.closed} icon={CheckCircle2} trend="" trendUp />
         </div>
         <div onClick={() => handleCardClick('CANCELLED')} className="cursor-pointer transform transition hover:-translate-y-1">
           <KPICard title="Annulé" value={stats.cancelled} icon={Ban} />
@@ -126,7 +126,7 @@ export const Dashboard: React.FC = () => {
         </Card>
 
         {/* Chart 2 - 1/3 width */}
-        <Card title="État des tickets" className="min-h-[300px]">
+        <Card title="État des Incidents" className="min-h-[300px]">
           <div className="h-56 w-full relative mt-4">
              <ResponsiveContainer width="100%" height="100%">
               <PieChart>

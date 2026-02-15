@@ -7,16 +7,20 @@ import { ArrowLeft, Edit2, Trash2, Plus } from 'lucide-react';
 export const SiteList: React.FC = () => {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSites();
-  }, []);
+  }, [currentPage]);
 
   const fetchSites = async () => {
     setLoading(true);
-    const data = await api.getSites();
-    setSites(data);
+    const result = await api.getSites(currentPage, 10);
+    setSites(result.data);
+    setTotalPages(result.totalPages);
     setLoading(false);
   };
 
@@ -95,6 +99,31 @@ export const SiteList: React.FC = () => {
                         )}
                     </tbody>
                 </table>
+
+                {/* Pagination Controls */}
+                {(
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-800">
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+                    >
+                      Précédent
+                    </button>
+
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      Page {currentPage} sur {totalPages}
+                    </span>
+
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                )}
             </div>
         )}
       </div>

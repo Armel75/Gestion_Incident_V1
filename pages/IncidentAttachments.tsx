@@ -15,16 +15,6 @@ export const IncidentAttachments: React.FC = () => {
     }
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-  //   // Simulating API call delay for UX feedback
-  //   setTimeout(() => {
-  //       setLoading(false);
-  //       navigate(`/incidents/${id}`);
-  //   }, 800);
-  // };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || files.length === 0) return;

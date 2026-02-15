@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { CreateUserDTO, Role, Site } from '../../types';
+import { SearchSelect } from '@/components/ui/SearchSelect';
 
 export const NewUser: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,29 +21,60 @@ export const NewUser: React.FC = () => {
     password: ''
   });
 
-  useEffect(() => {
-        const init = async () => {
-        const availableRoles = await api.getRoles();
-        const avalaibleSites = await api.getSites();
-        setRoles(availableRoles);
-        setSites(avalaibleSites);
+  // useEffect(() => {
+  //       const init = async () => {
+  //       const availableRoles = await api.getRoles();
+  //       const avalaibleSites = await api.getSites();
+  //       setRoles(availableRoles);
+  //       setSites(avalaibleSites);
 
-        if (isEditMode && id) {
-          const item = await api.getUserById(Number(id));
-          if (item) {
-            setFormData({
-              username: item.username,
-              roleIds: item.roles
-                ? roles
-                    .filter(r => item.roles.includes(r.name))
-                    .map(r => r.id)
-                : [],
-              isActive: item.isActive,
-              password: ''
-            });
-          }
+  //       if (isEditMode && id) {
+  //         const item = await api.getUserById(Number(id));
+  //         if (item) {
+  //           setFormData({
+  //             username: item.username,
+  //             roleIds: item.roles
+  //               ? roles
+  //                   .filter(r => item.roles.includes(r.name))
+  //                   .map(r => r.id)
+  //               : [],
+  //             isActive: item.isActive,
+  //             password: ''
+  //           });
+  //         }
+  //       }
+  //   };
+  //   init();
+  // }, [id, isEditMode]);
+
+  useEffect(() => {
+    const init = async () => {
+      const availableRoles = await api.getRoles();
+
+      // 🔥 récupération paginée
+      const sitesResult = await api.getSites(1, 1000);
+
+      setRoles(availableRoles);
+
+      // 🔥 IMPORTANT : on prend .data
+      setSites(sitesResult.data);
+
+      if (isEditMode && id) {
+        const item = await api.getUserById(Number(id));
+        if (item) {
+          setFormData({
+            username: item.username,
+            roleIds: item.roles
+            ? item.roles.map(role => role.id)
+            : [],
+            siteId: item.siteId ?? null, // 🔥 IMPORTANT
+            isActive: item.isActive,
+            password: ''
+          });
         }
+      }
     };
+
     init();
   }, [id, isEditMode]);
 
@@ -172,11 +204,7 @@ export const NewUser: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="siteId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Site
-                    </label>
-
-                    <select
+                    {/* <select
                       id="siteId"
                       name="siteId"
                       value={formData.siteId ?? ''}
@@ -199,7 +227,24 @@ export const NewUser: React.FC = () => {
                           {site.name}
                         </option>
                       ))}
-                    </select>
+                    </select> */}
+                    <SearchSelect
+                      label="Site"
+                      options={sites.map(s => s.name)}
+                      value={
+                        sites.find(s => s.id === formData.siteId)?.name || ''
+                      }
+                      disabled={isAdmin}
+                      onChange={(selectedName) => {
+                        const selectedSite = sites.find(s => s.name === selectedName);
+
+                        setFormData(prev => ({
+                          ...prev,
+                          siteId: selectedSite ? selectedSite.id : null
+                        }));
+                      }}
+                      placeholder="Rechercher un site..."
+                    />
                   </div>
                   <div>
                       <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">

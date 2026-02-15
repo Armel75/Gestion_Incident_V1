@@ -20,61 +20,124 @@ export const NewIncident: React.FC = () => {
 
     // Form State
     const [formData, setFormData] = useState({
-        site: [] as string[],
+        siteIds: [] as number[],   // ✅ BON
         scope: '',
         category: '',
         subCategory: '',
         otherSubCategory: '',
+        isOtherSubCategory: false,
         processDomain: '',
         keyProcess: '',
         subProcessId: '', // Au lieu de subProcess
         description: '',
-        impactedSites: [] as string[],
+        impactedSiteIds: [] as number[],
         criticality: 'Moyenne',
         urgency: 'Moyenne',
         responsibleServices: [] as string[],
-        //assignedUsers: [] as string[],
-        personnes: [] as string[],
+        personneIds: [] as number[],
         dueDate: '',
         attachments: [] as File[],
     });
+    console.log("FORM DATA", formData);
 
     //const [sites, setSites] = useState<string[]>([]);
-    const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
+    const [sites, setSites] = useState<{ id: number; name: string }[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<Record<string, SubCategory[]>>({});
     const [processDomains, setProcessDomains] = useState<Process[]>([]);
-    //const [users, setUsers] = useState<User[]>([]);
     const [personnes, setPersonnes] = useState<Personne[]>([]);
     const [subProcess, setSubProcess] =
-        useState<Record<string, { id: string; name: string }[]>>({});
+    useState<Record<string, { id: string; name: string }[]>>({});
     const [refsLoaded, setRefsLoaded] = useState(false);
+
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         const [sitesData, categoriesData, subCategoriesData, processesData, usersData, subProcessData, personnesData] = await Promise.all([
+    //             api.getSites(),
+    //             api.getCategories(),
+    //             api.getSubCategories(),
+    //             api.getProcesses(),
+    //             api.getUsers(),
+    //             api.getSubProcesses(),
+    //             api.getPersonnes(),
+    //         ]);
+    //         setSites(sitesData);
+    //         setCategories(categoriesData);
+    //         setPersonnes(personnesData);
+    //         console.log('Exemple site ID type:', typeof sites[0]?.id);
+
+    //         // Debugs
+    //         console.log('SitesData complète:', sitesData); // Vérifie si [{id: ?, name: ?}]
+    //         if (sitesData.length > 0) {
+    //             console.log('Type de site[0].id:', typeof sitesData[0]?.id); // Devrait être 'number' ou 'string'
+    //         } else {
+    //             console.error('Sites vides ! Vérifiez API /sites ou DB.');
+    //         }
+
+    //         // 🔴 TRANSFORMATION OBLIGATOIRE ICI
+    //         const groupedSubCategories: Record<string, SubCategory[]> = {};
+    //         const groupedSubProcesses: Record<string, { id: string; name: string }[]> = {};
+
+    //         subCategoriesData.forEach(sc => {
+    //             if (!groupedSubCategories[sc.categoryId]) {
+    //                 groupedSubCategories[sc.categoryId] = [];
+    //             }
+    //             groupedSubCategories[sc.categoryId].push(sc);
+    //         });
+    //         setSubCategories(groupedSubCategories);
+
+    //         subProcessData.forEach(sp => {
+    //             if (!groupedSubProcesses[sp.processId]) {
+    //                 groupedSubProcesses[sp.processId] = [];
+    //             }
+    //             groupedSubProcesses[sp.processId].push({
+    //                 id: sp.id,
+    //                 name: sp.name
+    //             });
+    //         });
+    //         setSubProcess(groupedSubProcesses);
+
+    //         setProcessDomains(processesData);
+    //         //setUsers(usersData);
+    //         //setSubProcess(subProcessData);
+    //         setRefsLoaded(true);
+    //     };
+    //     fetchData();
+    // }, []);
+
 
     useEffect(() => {
         const fetchData = async () => {
-            const [sitesData, categoriesData, subCategoriesData, processesData, usersData, subProcessData, personnesData] = await Promise.all([
-                api.getSites(),
+            const [
+                sitesResult,
+                categoriesData,
+                subCategoriesData,
+                processesData,
+                subProcessData,
+                personnesData
+            ] = await Promise.all([
+                api.getSites(1, 1000), // ⚠ on récupère un grand volume pour dropdown
                 api.getCategories(),
                 api.getSubCategories(),
                 api.getProcesses(),
-                api.getUsers(),
                 api.getSubProcesses(),
                 api.getPersonnes(),
             ]);
-            setSites(sitesData);
+
+            // 🔥 IMPORTANT : récupérer .data
+            setSites(sitesResult.data);
+
             setCategories(categoriesData);
             setPersonnes(personnesData);
-            console.log('Exemple site ID type:', typeof sites[0]?.id);
 
-            // Debugs
-            console.log('SitesData complète:', sitesData); // Vérifie si [{id: ?, name: ?}]
-            if (sitesData.length > 0) {
-                console.log('Type de site[0].id:', typeof sitesData[0]?.id); // Devrait être 'number' ou 'string'
-            } else {
+            // 🔎 DEBUG
+            console.log('SitesData complète:', sitesResult);
+
+            if (sitesResult.data.length === 0) {
                 console.error('Sites vides ! Vérifiez API /sites ou DB.');
             }
 
-            // 🔴 TRANSFORMATION OBLIGATOIRE ICI
+            // 🔴 GROUPING
             const groupedSubCategories: Record<string, SubCategory[]> = {};
             const groupedSubProcesses: Record<string, { id: string; name: string }[]> = {};
 
@@ -84,7 +147,6 @@ export const NewIncident: React.FC = () => {
                 }
                 groupedSubCategories[sc.categoryId].push(sc);
             });
-            setSubCategories(groupedSubCategories);
 
             subProcessData.forEach(sp => {
                 if (!groupedSubProcesses[sp.processId]) {
@@ -95,13 +157,14 @@ export const NewIncident: React.FC = () => {
                     name: sp.name
                 });
             });
-            setSubProcess(groupedSubProcesses);
 
+            setSubCategories(groupedSubCategories);
+            setSubProcess(groupedSubProcesses);
             setProcessDomains(processesData);
-            //setUsers(usersData);
-            //setSubProcess(subProcessData);
+
             setRefsLoaded(true);
         };
+
         fetchData();
     }, []);
 
@@ -113,9 +176,12 @@ export const NewIncident: React.FC = () => {
         const incident = await api.getIncidentById(id);
         if (!incident) return;
         console.log(incident)
-        setFormData({
-        site: incident.sites?.map(s => s.name) ?? [],
-        impactedSites: incident.impactedSites?.map(s => s.name) ?? [],
+
+        setFormData(prev => ({
+        ...prev,
+        //site: incident.sites?.map(s => s.name) ?? [],
+        siteIds: incident.sites?.map(s => Number(s.id)) ?? [],
+        impactedSiteIds: incident.impactedSites?.map(s => Number(s.id)) ?? [],
         scope: incident.scope ?? '',
         description: incident.description ?? '',
         //dueDate: incident.dueDate?.slice(0, 10) ?? '',
@@ -135,13 +201,13 @@ export const NewIncident: React.FC = () => {
         criticality: incident.criticality ?? 'Moyenne',
         urgency: incident.urgency ?? 'Moyenne',
 
-        //assignedUsers: incident.assignedUsers?.map(u => u.username) ?? [],
-        personnes: incident.personnes?.map(p => p.fullname) ?? [],
+        //personnes: incident.personnes?.map(p => p.fullname) ?? [],
+        personneIds: incident.personnes?.map(p => Number(p.id)) ?? [],
 
         responsibleServices: [],
 
         attachments: [],
-        });
+        }));
     };
 
     fetchIncident();
@@ -169,15 +235,15 @@ export const NewIncident: React.FC = () => {
         }
     };
 
-    const handleMultiSelectChange = (field: string, values: string[]) => {
-        setFormData(prev => ({ ...prev, [field]: values }));
+    // const handleMultiSelectChange = (field: string, values: string[]) => {
+    //     setFormData(prev => ({ ...prev, [field]: values }));
 
-        // Clear assigned users if responsible services change and selected users are no longer valid
-        // (Simplified logic here: just keep them, or clear them if services become empty)
-        if (field === 'responsibleServices' && values.length === 0) {
-            setFormData(prev => ({ ...prev, [field]: values, assignedUsers: [] }));
-        }
-    };
+    //     // Clear assigned users if responsible services change and selected users are no longer valid
+    //     // (Simplified logic here: just keep them, or clear them if services become empty)
+    //     if (field === 'responsibleServices' && values.length === 0) {
+    //         setFormData(prev => ({ ...prev, [field]: values, assignedUsers: [] }));
+    //     }
+    // };
 
     const mapUrgencyToPriority = (urgency: string): Priority => {
         switch (urgency) {
@@ -191,17 +257,23 @@ export const NewIncident: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (formData.subCategory && formData.otherSubCategory) {
+        alert("Choisissez soit une sous-catégorie soit 'Autre'.");
+        return;
+    }
+
     // ✅ VALIDATION OBLIGATOIRE — SITES CONCERNÉS
-    if (formData.impactedSites.length === 0) {
+    if (formData.impactedSiteIds.length === 0) {
         alert("Veuillez sélectionner au moins un site concerné.");
         return;
     }
 
     // (optionnel mais cohérent)
-    if (formData.site.length === 0) {
+    if (formData.siteIds.length === 0) {
         alert("Veuillez sélectionner au moins un site responsable.");
         return;
-    } 
+    }
+
     const payload = new FormData();
 
     payload.append('description', formData.description);
@@ -211,16 +283,12 @@ export const NewIncident: React.FC = () => {
     payload.append('urgency', formData.urgency);
     payload.append('criticality', formData.criticality);
 
-    // Sites concernés (IMPACTÉS)
-    formData.impactedSites.forEach(siteName => {
-        const site = sites.find(s => s.name === siteName);
-        if (site) payload.append('impactedSiteIds', String(site.id));
+    formData.impactedSiteIds.forEach(id => {
+        payload.append('impactedSiteIds', String(id));
     });
 
-    // Sites
-    formData.site.forEach(siteName => {
-        const site = sites.find(s => s.name === siteName);
-        if (site) payload.append('siteIds', String(site.id));
+    formData.siteIds.forEach(id => {
+        payload.append('siteIds', String(id));
     });
 
     // Sous-catégorie
@@ -231,12 +299,6 @@ export const NewIncident: React.FC = () => {
     payload.append('subCategoryId', String(formData.subCategory));
     }
 
-    // if (formData.otherSubCategory) {
-    //     payload.append('otherSubCategory', formData.otherSubCategory);
-    // } else {
-    //     payload.append('subCategoryId', String(formData.subCategory));
-    // }
-
     // Process
     if (formData.processDomain)
         payload.append('processDomainId', String(formData.processDomain));
@@ -244,17 +306,8 @@ export const NewIncident: React.FC = () => {
     if (formData.subProcessId)
         payload.append('subProcessId', String(formData.subProcessId));
 
-    // Assignés
-    // formData.assignedUsers.forEach(u => {
-    //     const user = users.find(us => us.username === u || us.fullName === u);
-    //     if (user) payload.append('assignedUserIds', String(user.id));
-    // });
-
-    formData.personnes.forEach(fullname => {
-        const personne = personnes.find(p => p.fullname === fullname);
-        if (personne) {
-            payload.append('personneIds', String(personne.id));
-        }
+    formData.personneIds.forEach(id => {
+        payload.append('personneIds', String(id));
     });
 
     // 🔥 FICHIERS
@@ -278,30 +331,22 @@ export const NewIncident: React.FC = () => {
     const availableSubCategories = formData.category ? subCategories[formData.category] || [] : [];
     const availableSubProcesses = formData.processDomain ? subProcess[formData.processDomain] || [] : [];
     
-    //const availablePersonnes = [];
+    // const availablePersonnes = useMemo(() => {
+    //     if (formData.siteIds.length === 0) return [];
+
+    //     return personnes.map(p => p.fullname);
+
+    // }, [personnes, formData.siteIds]);
 
     const availablePersonnes = useMemo(() => {
-        if (formData.site.length === 0) return [];
+    if (formData.siteIds.length === 0) return [];
 
-        return personnes.map(p => p.fullname);
-
-    }, [personnes, formData.site]);
-
-    // const availablePersonnes = useMemo(() => {
-    // if (formData.site.length === 0) return [];
-
-    // return personnes
-    //     .filter(personne => {
-    //     const personneSite = sites.find(
-    //         s => String(s.id) === String(personne.siteId)
-    //     );
-
-    //     return personneSite && formData.site.includes(personneSite.name);
-    //     })
-    //     .map(personne => personne.fullname);
-
-    // }, [personnes, formData.site, sites]);
-
+    return personnes
+        .map(p => ({
+        label: p.fullname,
+        value: p.id
+        }));
+    }, [personnes, formData.siteIds]);
 
     return (
         <form onSubmit={handleSubmit} encType="multipart/form-data" className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
@@ -342,13 +387,30 @@ export const NewIncident: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site(s) concerné(s) <span className="text-red-500">*</span></label>
-                            <MultiSelect
+                            {/* <MultiSelect
                                 required
                                 options={sites.map(s => s.name).filter(Boolean)}
                                 selected={formData.impactedSites}
                                 onChange={(vals) => handleMultiSelectChange('impactedSites', vals)}
                                 placeholder="Choisir les sites..."
+                            /> */}
+                            <MultiSelect
+                                required
+                                options={sites.map(s => ({
+                                    label: s.name,
+                                    value: s.id
+                                }))}
+                                selected={formData.impactedSiteIds}
+                                onChange={(values) =>
+                                    setFormData(prev => ({
+                                    ...prev,
+                                    impactedSiteIds: values as number[]
+                                    }))
+                                }
+                                placeholder="Choisir les sites..."
                             />
+
+
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Périmètre de l'incident / Autre(s) site(s)</label>
@@ -424,17 +486,56 @@ export const NewIncident: React.FC = () => {
                                             sc => String(sc.id) === formData.subCategory
                                         )?.name || ''
                                     }
-                                    onChange={(selectedName) => {
-                                        const selectedSubCategory =
-                                            availableSubCategories.find(sc => sc.name === selectedName);
+                                    // onChange={(selectedName) => {
+                                    // const selectedSubCategory =
+                                    //     availableSubCategories.find(sc => sc.name === selectedName);
 
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            subCategory: selectedSubCategory
-                                            ? String(selectedSubCategory.id)
-                                            : ''
-                                        }));
-                                    }}
+                                    // const id = selectedSubCategory
+                                    //     ? String(selectedSubCategory.id)
+                                    //     : '';
+
+                                    // setFormData(prev => ({
+                                    //     ...prev,
+                                    //     subCategory: id,
+                                    //     // 🔥 si ce n’est PAS "Autre", on efface le texte libre
+                                    //     otherSubCategory:
+                                    //     selectedSubCategory?.name === 'Autre'
+                                    //         ? prev.otherSubCategory
+                                    //         : ''
+                                    // }));
+                                    // }}
+onChange={(selectedName) => {
+  const selectedSubCategory =
+    availableSubCategories.find(sc => sc.name === selectedName);
+
+  if (!selectedSubCategory) {
+    setFormData(prev => ({
+      ...prev,
+      subCategory: '',
+      otherSubCategory: '',
+      isOtherSubCategory: false
+    }));
+    return;
+  }
+
+  if (selectedSubCategory.name === 'Autre') {
+    setFormData(prev => ({
+      ...prev,
+      subCategory: '',
+      otherSubCategory: '',
+      isOtherSubCategory: true   // 🔥 MODE AUTRE
+    }));
+    return;
+  }
+
+  setFormData(prev => ({
+    ...prev,
+    subCategory: String(selectedSubCategory.id),
+    otherSubCategory: '',
+    isOtherSubCategory: false
+  }));
+}}
+
                                     placeholder={
                                         formData.category
                                             ? 'Rechercher une sous-catégorie...'
@@ -444,7 +545,7 @@ export const NewIncident: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    {availableSubCategories.find(sc => String(sc.id) === String(formData.subCategory))?.name === 'Autre' && (
+                    {/* {availableSubCategories.find(sc => String(sc.id) === String(formData.subCategory))?.name === 'Autre' && (
                         <div className="md:col-span-2 animate-in fade-in slide-in-from-top-2">
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                 Précision (Sous-catégorie non listée)
@@ -454,11 +555,38 @@ export const NewIncident: React.FC = () => {
                                 name="otherSubCategory"
                                 autoComplete="off"
                                 value={formData.otherSubCategory}
-                                onChange={handleChange}
+                                onChange={(e) =>
+                                setFormData(prev => ({
+                                    ...prev,
+                                    otherSubCategory: e.target.value
+                                }))
+                                }
                                 className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                             />
+
                         </div>
-                    )}
+                    )} */}
+{formData.isOtherSubCategory && (
+  <div className="md:col-span-2 animate-in fade-in slide-in-from-top-2">
+    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+      Précision (Sous-catégorie non listée)
+    </label>
+
+    <input
+      type="text"
+      name="otherSubCategory"  // ✔ important
+      autoComplete="off"
+      value={formData.otherSubCategory}
+      onChange={(e) =>
+        setFormData(prev => ({
+          ...prev,
+          otherSubCategory: e.target.value
+        }))
+      }
+      className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+    />
+  </div>
+)}
 
                     <div>
                         <div>
@@ -602,46 +730,99 @@ export const NewIncident: React.FC = () => {
                             5. Assignation
                         </h2>
                         <div className="space-y-6">
-                            <div>
+                            {/* <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service(s) responsable(s) du traitement <span className="text-red-500">*</span></label>
                                 <MultiSelect
                                     required
-                                    options={sites.map(s => s.name)}
-                                    selected={formData.site}
-                                    onChange={(vals) => handleMultiSelectChange('site', vals)}
+                                    options={sites.map(s => ({
+                                    label: s.name,
+                                    value: s.id
+                                    }))}
+                                    selected={formData.siteIds}
+                                    //onChange={(vals) => handleMultiSelectChange('siteIds', vals)}
+                                    onChange={(values) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        siteIds: values
+                                    }));
+                                    }}
                                     placeholder="Choisir un ou plusieurs sites..."
                                 />
+                            </div> */}
+                            <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                Service(s) responsable(s) du traitement <span className="text-red-500">*</span>
+                            </label>
+
+                            {/* <MultiSelect
+                                required
+                                options={sites.map(s => s.name)}
+                                selected={formData.siteIds.map(id =>
+                                sites.find(s => Number(s.id) === id)?.name || ''
+                                )}
+                                onChange={(selectedNames) => {
+                                const ids = selectedNames
+                                    .map(name => sites.find(s => s.name === name)?.id)
+                                    .filter(Boolean)
+                                    .map(id => Number(id));
+
+                                setFormData(prev => ({
+                                    ...prev,
+                                    siteIds: ids
+                                }));
+                                }}
+                                placeholder="Choisir un ou plusieurs sites..."
+                            /> */}
+                            <MultiSelect
+                                required
+                                options={sites.map(s => ({
+                                    label: s.name,
+                                    value: s.id
+                                }))}
+                                selected={formData.siteIds}
+                                onChange={(values) =>
+                                    setFormData(prev => ({
+                                    ...prev,
+                                    siteIds: values as number[]
+                                    }))
+                                }
+                                placeholder="Choisir un ou plusieurs sites..."
+                            />
+
                             </div>
 
-                            <div>
-                                {/* <SearchSelect
-                                    label="Employé assigné"
-                                    options={availableUsers}
-                                    value={formData.assignedUsers[0] || ''}
-                                    onChange={(selectedUser) => {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            assignedUsers: selectedUser ? [selectedUser] : []
-                                        }));
-                                    }}
-                                    placeholder={
-                                        formData.site.length > 0
-                                            ? "Rechercher un utilisateur..."
-                                            : "Sélectionner un site d'abord"
-                                    }
-                                /> */}
+                            {/* <div>
                                 <MultiSelect
                                     label="Personnes assignées"
                                     options={availablePersonnes}
                                     selected={formData.personnes}
                                     onChange={(vals) => handleMultiSelectChange('personnes', vals)}
                                     placeholder={
-                                        formData.site.length > 0
+                                        formData.siteIds.length > 0
                                         ? "Sélectionner une ou plusieurs personnes..."
                                         : "Sélectionner un service d'abord"
                                     }
                                 />
 
+                            </div> */}
+
+                            <div>
+                            <MultiSelect
+                                label="Personnes assignées"
+                                options={availablePersonnes}
+                                selected={formData.personneIds}
+                                onChange={(values) =>
+                                setFormData(prev => ({
+                                    ...prev,
+                                    personneIds: values as number[]
+                                }))
+                                }
+                                placeholder={
+                                formData.siteIds.length > 0
+                                    ? "Sélectionner une ou plusieurs personnes..."
+                                    : "Sélectionner un service d'abord"
+                                }
+                            />
                             </div>
 
                         </div>

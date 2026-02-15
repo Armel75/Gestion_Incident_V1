@@ -16,7 +16,7 @@ export const NewPersonne: React.FC = () => {
   useEffect(() => {
     if (isEditMode && id) {
       const fetchPersonne = async () => {
-        const personne = await api.getPersonneById(id);
+        const personne = await api.getPersonneById(Number(id));
         if (personne) {
           setFormData({
             fullname: personne.fullname || ''
@@ -37,7 +37,7 @@ export const NewPersonne: React.FC = () => {
     setLoading(true);
     try {
       if (isEditMode && id) {
-        await api.updatePersonne(id, { fullname: formData.fullname });
+        await api.updatePersonne(Number(id), { fullname: formData.fullname });
       } else {
         await api.createPersonne({ fullname: formData.fullname });
       }

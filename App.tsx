@@ -34,7 +34,8 @@ import { NewUser } from './pages/admin/NewUser';
 import { NewRole } from './pages/admin/NewRole';
 import { NewPermission } from './pages/admin/NewPermission';
 import { NewPersonne } from './pages/NewPersonne';
-import { PersonneList } from './pages/Personnelist';
+import { PersonneList } from './pages/PersonneList';
+import { TaskAttachments } from './pages/TaskAttachments';
 
 const App: React.FC = () => {
   return (
@@ -54,6 +55,10 @@ const App: React.FC = () => {
           <Route path="/tasks" element={<TaskList />} />
           <Route path="/incidents/:incidentId/tasks/new" element={<NewTask />} />
           <Route path="/incidents/:incidentId/tasks/:taskId/edit" element={<NewTask />} />
+          <Route
+            path="/incidents/:incidentId/tasks/:taskId/attachments"
+            element={<TaskAttachments />}
+          />
 
           <Route element={<RequireRole allowedRoles={['ADMIN']} />}>
             <Route path="/pilotage" element={<Pilotage />} />

@@ -155,10 +155,20 @@ export const api = {
     });
   },
 
-  getIncidents: async (): Promise<Incident[]> => {
-    const response = await apiFetch('/incidents', {
-      method: 'GET',
-    });
+  getIncidents: async (
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    data: Incident[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> => {
+
+    const response = await apiFetch(
+      `/incidents?page=${page}&limit=${limit}`,
+      { method: 'GET' }
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -251,7 +261,25 @@ export const api = {
     }
   },
 
+  addTaskAttachments: async (
+    taskId: string,
+    formData: FormData
+  ): Promise<void> => {
 
+    const response = await apiFetch(
+      `/tasks/${taskId}/attachments`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de l’ajout des pièces jointes');
+    }
+  },
+ 
+  
 
   createIncident: async (formData: FormData): Promise<Incident> => {
     const response = await apiFetch('/incidents', {
@@ -323,10 +351,22 @@ export const api = {
     }
   },
 
-  getSites: async (): Promise<Site[]> => {
-    const response = await apiFetch('/sites', {
-      method: 'GET',
-    });
+  getSites: async (
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    data: Site[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> => {
+
+    const response = await apiFetch(
+      `/sites?page=${page}&limit=${limit}`,
+      {
+        method: 'GET',
+      }
+    );
 
     if (!response.ok) {
       throw new Error('Erreur lors du chargement des sites');
@@ -334,6 +374,7 @@ export const api = {
 
     return response.json();
   },
+
 
 
   createSite: async (payload: { name: string }): Promise<Site> => {

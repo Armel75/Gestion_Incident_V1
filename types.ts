@@ -53,7 +53,6 @@ export interface Incident {
   status: IncidentStatus;
   priority: Priority;
   urgency: Urgency;
-  site: string;
   service: string;
   categoryId: string;
   category: string;
@@ -70,7 +69,6 @@ export interface Incident {
   processDomainId?: string;
   sites: Site[];
   impactedSites: Site[];
-  //assignedUsers?: User[];
   personnes?: Personne[];
   serviceEmitter?: string | null;
 }

@@ -18,29 +18,34 @@ export const IncidentList: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     if (!authLoading) {
       fetchIncidents();
     }
-  }, [authLoading]);
+  }, [authLoading, currentPage]);
 
   const fetchIncidents = async () => {
     setLoading(true);
-    const data = await api.getIncidents();
-    console.log(data);
-    const mappedData = data.map(inc => ({
+
+    const result = await api.getIncidents(currentPage, 10);
+
+    const mappedData = result.data.map(inc => ({
       ...inc,
       reference: `INC-${new Date(inc.createdAt).getFullYear()}-${String(inc.id).padStart(3, '0')}`,
       title: inc.description,
-      description: inc.description,
       priority: inc.urgency,
       service: '',
-      serviceEmitter: inc.serviceEmitter,
-      //assignedTo: null
+      serviceEmitter: inc.serviceEmitter
     }));
+
     setIncidents(mappedData);
+    setTotalPages(result.totalPages);
     setLoading(false);
   };
+
   const clearFilter = () => {
       setSearchParams({});
       setSearchTerm('');
@@ -324,22 +329,6 @@ export const IncidentList: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
-                    {/* {incident.assignedUsers && incident.assignedUsers.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {incident.assignedUsers.map(user => (
-                          <div key={user.id} className="flex items-center gap-2">
-                            <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
-                              {user.username.substring(0, 2).toUpperCase()}
-                            </div>
-                            <span className="text-xs text-slate-600 dark:text-slate-300">
-                              {user.username}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">—</span>
-                    )} */}
                     {incident.personnes && incident.personnes.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                         {incident.personnes.map(personne => (
@@ -407,17 +396,31 @@ export const IncidentList: React.FC = () => {
       </div>
       {/* Footer Pagination - Minimalist */}
       <div className="border-t border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
-         <span className="text-xs text-slate-500 dark:text-slate-400">
-            Showing <span className="font-medium text-slate-900 dark:text-white">{filteredIncidents.length}</span> items
-         </span>
-         <div className="flex items-center gap-1">
-            <button className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50" disabled>
-                <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <ChevronRight className="h-4 w-4" />
-            </button>
-         </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          Page <span className="font-medium text-slate-900 dark:text-white">{currentPage}</span>
+          {' '}sur{' '}
+          <span className="font-medium text-slate-900 dark:text-white">{totalPages}</span>
+        </span>
+
+        <div className="flex items-center gap-2">
+
+          <button
+            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+            disabled={currentPage === 1}
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+
+        </div>
       </div>
     </div>
   );
