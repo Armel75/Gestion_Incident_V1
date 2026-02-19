@@ -5,7 +5,6 @@ import { User } from '../../../types';
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  loading: boolean;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   logout: () => void;
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { Task } from '../types';
-import { CheckSquare, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const TaskList: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -46,9 +46,6 @@ export const TaskList: React.FC = () => {
                  {tasks.map((task) => (
                      <div key={task.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 hover:border-brand-500 dark:hover:border-brand-500 transition-all shadow-sm">
                          <div className="flex items-start gap-4">
-                             <div className={`mt-1 flex-shrink-0 h-5 w-5 rounded border ${task.status === 'DONE' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent'} flex items-center justify-center`}>
-                                 <CheckSquare className="h-3.5 w-3.5 fill-current" />
-                             </div>
                              <div className="flex-1 min-w-0">
                                  <div className="flex items-center justify-between">
                                      <h3 className={`text-sm font-medium ${task.status === 'DONE' ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
@@ -67,16 +64,6 @@ export const TaskList: React.FC = () => {
                                          {task.description}
                                      </p>
                                  )}
-                                 <div className="mt-3 flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
-                                     <div className="flex items-center gap-1.5">
-                                         <Calendar className="h-3.5 w-3.5" />
-                                         {/* {new Date(task.dueDate).toLocaleDateString()} */}
-                                     </div>
-                                     <div className="flex items-center gap-1.5">
-                                         <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                                         Assigné à: {task.assignedTo}
-                                     </div>
-                                 </div>
                              </div>
                          </div>
                      </div>

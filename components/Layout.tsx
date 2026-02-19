@@ -95,7 +95,7 @@ export const Layout: React.FC = () => {
       </Link>
     );
   };
-  console.log('USER:', user);
+  
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans text-slate-900 dark:text-slate-100 transition-colors duration-200">
       
@@ -161,13 +161,17 @@ export const Layout: React.FC = () => {
         </div>
 
         {/* User Footer */}
-        <div className="border-t border-slate-100 dark:border-slate-800 p-3">
+        {/* <div className="border-t border-slate-100 dark:border-slate-800 p-3">
           <div className={`flex items-center p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group ${collapsed ? 'justify-center' : 'justify-between'}`}>
             <div className="flex items-center min-w-0">
               <img
                 className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-700"
-                src="/template/logo.png"
-                alt=""
+                src={logo}
+                alt="Logo"
+                onError={(e) => {
+                  e.currentTarget.onerror = null; // évite boucle infinie
+                  e.currentTarget.src = 'template/logo.png'; // ou une autre image du dossier public
+                }}
               />
               {!collapsed && (
                 <div className="ml-3 min-w-0">
@@ -182,7 +186,54 @@ export const Layout: React.FC = () => {
               </button>
             )}
           </div>
+        </div> */}
+        {/* User Footer */}
+        <div className="border-t border-slate-100 dark:border-slate-800 p-3">
+          <div className="rounded-md bg-slate-50/60 dark:bg-slate-950/30 p-2">
+            {/* Ligne du haut */}
+            <div className={`flex items-center ${collapsed ? "justify-center" : "justify-start"}`}>
+              <img
+                className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-700"
+                src={logo}
+                alt="Logo"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = `${import.meta.env.BASE_URL}template/logo.png`;
+                }}
+              />
+
+              {!collapsed && (
+                <div className="ml-3 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                    {user?.username ?? "Chargement..."}
+                  </p>
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate capitalize">
+                    {primaryRole?.toLowerCase()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Ligne du bas */}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className={[
+                  "w-full inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors",
+                  "bg-red-600 text-white hover:bg-red-700",
+                  "dark:bg-red-500 dark:hover:bg-red-600",
+                  collapsed ? "px-2" : "",
+                ].join(" ")}
+                title="Déconnexion"
+              >
+                <LogOut className="h-4 w-4" />
+                {!collapsed && <span>Déconnexion</span>}
+              </button>
+            </div>
+          </div>
         </div>
+
       </div>
 
       {/* Mobile Sidebar (Drawer) */}
@@ -219,7 +270,11 @@ export const Layout: React.FC = () => {
                   <img
                     className="h-10 w-10 rounded-full border border-slate-200 dark:border-slate-700"
                     src={logo}
-                    alt=""
+                    alt="Logo"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null; // évite boucle infinie
+                      e.currentTarget.src = 'template/logo.png'; // ou une autre image du dossier public
+                    }}
                   />
                   <div className="ml-3">
                     <p className="text-sm font-medium text-slate-900 dark:text-white">{user?.username ?? 'Chargement...'}</p>

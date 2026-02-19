@@ -88,10 +88,10 @@ export const Dashboard: React.FC = () => {
         <div onClick={() => handleCardClick('OPEN')} className="cursor-pointer transform transition hover:-translate-y-1">
           <KPICard title="Incidents Ouverts" value={stats.open} icon={AlertCircle} trend="" />
         </div>
-        <div onClick={() => handleCardClick('IN_PROGRESS')} className="cursor-pointer transform transition hover:-translate-y-1">
+        <div onClick={() => handleCardClick('OPEN')} className="cursor-pointer transform transition hover:-translate-y-1">
           <KPICard title="En Cours" value={stats.open} icon={Clock} />
         </div>
-        <div onClick={() => handleCardClick('RESOLVED')} className="cursor-pointer transform transition hover:-translate-y-1">
+        <div onClick={() => handleCardClick('CLOSED')} className="cursor-pointer transform transition hover:-translate-y-1">
           <KPICard title="Résolus (Mois)" value={stats.closed} icon={CheckCircle2} trend="" trendUp />
         </div>
         <div onClick={() => handleCardClick('CANCELLED')} className="cursor-pointer transform transition hover:-translate-y-1">

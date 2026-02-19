@@ -23,10 +23,10 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
         const fetchData = async () => {
             if (id) {
                 const inc = await api.getIncidentById(id);
-                console.log(inc);
-                console.log('INCIDENT DB ID 👉', inc.id);
+
+
                 const taskList = await api.getTasks(String(inc.id));
-                console.log(taskList);
+
                 setIncident(inc);
                 setTasks(taskList);
                 setLoading(false);
@@ -42,11 +42,9 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             try {
                 const attachments = await api.getIncidentAttachments(id);
 
-                console.log('ATTACHMENTS API 👉', attachments);
-
                 setIncidentAttachments(attachments);
             } catch (err) {
-                console.error('Failed to load attachments', err);
+
                 setIncidentAttachments([]);
             }
         };
@@ -100,7 +98,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             setTasks(prev => prev.filter(task => task.id !== taskId));
         } catch (error) {
             alert("Erreur lors de la suppression de la tâche");
-            console.error(error);
         }
     };
 
@@ -122,7 +119,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             );
 
         } catch (error: any) {
-            console.error(error);
             alert("Erreur lors de la suppression des pièces jointes");
         }
     };
@@ -130,7 +126,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
 
     const handleAddTaskAttachments = (taskId: string) => {
         // Changed to navigate to the dedicated attachment page for tasks
-        console.log("TASK ID 👉", taskId, typeof taskId);
         navigate(`/incidents/${id}/tasks/${taskId}/attachments`);
     };
 
@@ -156,7 +151,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             }
 
         } catch (error) {
-            console.error(error);
             alert("Erreur lors du téléchargement");
         } finally {
             setDownloadingTaskId(null);
@@ -238,7 +232,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             URL.revokeObjectURL(url);
 
         } catch (error: any) {
-            console.error(error);
             alert(error.message || 'Impossible de générer le PDF');
         } finally {
             setDownloadingId(null);
@@ -261,7 +254,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         } catch (error) {
-            console.error(error);
             alert("Impossible de télécharger le fichier");
         }
     };
@@ -270,15 +262,19 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
     const handleDeleteIncidentAttachment = async (
         attachmentId: string,
         e: React.MouseEvent
-    ) => {
+        ) => {
         e.stopPropagation();
+
+        if (!canDeleteIncidentAttachments) {
+            alert("Seul le déclarateur de l'incident peut supprimer une pièce jointe.");
+            return;
+        }
 
         if (!window.confirm("Supprimer la pièce jointe ?")) return;
 
         const res = await api.deleteIncidentAttachment(incident.id, attachmentId);
 
         if (!res.ok) {
-            console.error('DELETE attachment failed', await res.text());
             alert("Erreur lors de la suppression");
             return;
         }
@@ -289,6 +285,10 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
     };
 
     const handleAddIncidentAttachment = () => {
+        if (!canAddIncidentAttachments) {
+            alert("Seul le déclarateur de l'incident peut ajouter des pièces jointes.");
+            return;
+        }
         navigate(`/incidents/${id}/attachments`);
     };
 
@@ -336,6 +336,21 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
         incident.status !== 'CLOSED' &&
         incident.status !== 'CANCELLED' &&
         Number(user.id) === Number(incident.reporterId);
+
+    const isReporter =
+    !!incident &&
+    !!user &&
+    Number(user.id) === Number(incident.reporterId);
+
+    // ✅ Seul le déclarateur peut ajouter
+    const canAddIncidentAttachments = isReporter;
+
+    const isReporterDelete =
+    !!incident &&
+    !!user &&
+    Number(user.id) === Number(incident.reporterId);
+
+    const canDeleteIncidentAttachments = isReporterDelete;
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-slate-950 lg:bg-slate-50/50 lg:dark:bg-slate-950 transition-colors duration-200">
@@ -430,6 +445,15 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pièces jointes</h3>
+                                        {/* <button
+                                            onClick={handleAddIncidentAttachment}
+                                            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm text-xs"
+                                            title="Accéder à la page d'ajout de fichiers"
+                                        >
+                                            <UploadCloud className="h-4 w-4" />
+                                            <span>Ajouter des pièces jointes</span>
+                                        </button> */}
+                                        {canAddIncidentAttachments ? (
                                         <button
                                             onClick={handleAddIncidentAttachment}
                                             className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm text-xs"
@@ -438,6 +462,17 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                             <UploadCloud className="h-4 w-4" />
                                             <span>Ajouter des pièces jointes</span>
                                         </button>
+                                        ) : (
+                                        <button
+                                            type="button"
+                                            disabled
+                                            className="flex items-center gap-2 bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-md font-medium text-xs cursor-not-allowed opacity-80"
+                                            title="Le déclarateur de l'incident ne peut pas ajouter de pièces jointes"
+                                        >
+                                            <UploadCloud className="h-4 w-4" />
+                                            <span>Ajouter des pièces jointes</span>
+                                        </button>
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap gap-3">
                                         {incidentAttachments.map(att => (
@@ -446,12 +481,21 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                                 onClick={() => handleAttachmentClick(att)}
                                                 className="relative group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer"
                                             >
-                                                <button
+                                                {/* <button
                                                     onClick={(e) => handleDeleteIncidentAttachment(att.id, e)}
                                                     className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full"
                                                 >
                                                     <X className="h-3 w-3" />
+                                                </button> */}
+                                                {canDeleteIncidentAttachments && (
+                                                <button
+                                                    onClick={(e) => handleDeleteIncidentAttachment(att.id, e)}
+                                                    className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full"
+                                                    title="Supprimer"
+                                                >
+                                                    <X className="h-3 w-3" />
                                                 </button>
+                                                )}
 
                                                 <div className="h-10 w-10 bg-slate-100 rounded flex items-center justify-center">
                                                     <span className="text-[10px] font-bold">

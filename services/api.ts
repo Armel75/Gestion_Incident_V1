@@ -80,10 +80,12 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
 export const api = {
 
+
   login: async (
     username: string,
     password: string
-  ): Promise<void> => {
+  ): Promise<{ accessToken: string; refreshToken: string }> => {
+
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,14 +93,44 @@ export const api = {
     });
 
     if (!response.ok) {
-      throw new Error('Login failed');
+      const errorText = await response.text();
+      throw new Error(errorText || 'Login failed');
     }
 
     const data = await response.json();
 
+    if (!data.accessToken || !data.refreshToken) {
+      throw new Error('Invalid login response');
+    }
+
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
+
+    return {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    };
   },
+
+  // login: async (
+  //   username: string,
+  //   password: string
+  // ): Promise<void> => {
+  //   const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ username, password }),
+  //   });
+
+  //   if (!response.ok) {
+  //     throw new Error('Login failed');
+  //   }
+
+  //   const data = await response.json();
+
+  //   localStorage.setItem('accessToken', data.accessToken);
+  //   localStorage.setItem('refreshToken', data.refreshToken);
+  // },
 
   logout: async (): Promise<void> => {
     return new Promise((resolve) => setTimeout(resolve, MOCK_DELAY / 2));
@@ -261,25 +293,13 @@ export const api = {
     }
   },
 
-  addTaskAttachments: async (
-    taskId: string,
-    formData: FormData
-  ): Promise<void> => {
-
-    const response = await apiFetch(
-      `/tasks/${taskId}/attachments`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Erreur lors de l’ajout des pièces jointes');
-    }
+  addTaskAttachments(taskId: string, formData: FormData) {
+    return apiFetch(`/tasks/${taskId}/attachments`, {
+      method: 'POST',
+      body: formData,
+    });
   },
- 
-  
+
 
   createIncident: async (formData: FormData): Promise<Incident> => {
     const response = await apiFetch('/incidents', {

@@ -6,12 +6,10 @@ import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Search, ChevronLeft, ChevronRight, Plus, ArrowUpDown, XCircle, FileSpreadsheet, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../src/types/auth/AuthContext';
 
-const SERVICES_FILTER_OPTIONS = ['IT Infrastructure', 'IT Support', 'Logistique', 'Finance', 'RH', 'Services Généraux'];
 export const IncidentList: React.FC = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get('status');
@@ -49,16 +47,11 @@ export const IncidentList: React.FC = () => {
   const clearFilter = () => {
       setSearchParams({});
       setSearchTerm('');
-      setServiceFilter('');
   };
   const filteredIncidents = useMemo(() => {
       return incidents.filter(incident => {
           // Status Filter
           if (statusFilter && incident.status !== statusFilter) {
-              return false;
-          }
-          // Service Filter
-          if (serviceFilter && incident.service !== serviceFilter) {
               return false;
           }
           // Text Search Filter
@@ -72,7 +65,7 @@ export const IncidentList: React.FC = () => {
           }
           return true;
       });
-  }, [incidents, statusFilter, serviceFilter, searchTerm]);
+  }, [incidents, statusFilter, searchTerm]);
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
@@ -202,7 +195,7 @@ export const IncidentList: React.FC = () => {
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10 transition-colors duration-200">
         <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight">Incidents</h1>
-            {(statusFilter || searchTerm || serviceFilter) && (
+            {(statusFilter || searchTerm) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-900/50 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10">
                     Filtres actifs
                     <button onClick={clearFilter} className="text-brand-600 hover:text-brand-900 dark:hover:text-white">
@@ -224,16 +217,6 @@ export const IncidentList: React.FC = () => {
                 />
              </div>
            
-             <select
-                 value={serviceFilter}
-                 onChange={(e) => setServiceFilter(e.target.value)}
-                 className="h-8 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 hover:border-slate-300 dark:hover:border-slate-600"
-             >
-                 <option value="">Tous les services</option>
-                 {SERVICES_FILTER_OPTIONS.map(service => (
-                     <option key={service} value={service}>{service}</option>
-                 ))}
-             </select>
              <button
                 className="h-8 pl-2 pr-3 bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 dark:hover:bg-brand-500 text-white rounded-md text-sm font-medium flex items-center gap-1.5 shadow-sm transition-all"
                 onClick={() => navigate('/incidents/new')}
@@ -254,7 +237,7 @@ export const IncidentList: React.FC = () => {
           filteredIncidents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-slate-500 dark:text-slate-400">
                   <p>Aucun incident trouvé.</p>
-                  {(statusFilter || searchTerm || serviceFilter) && <button onClick={clearFilter} className="mt-2 text-sm text-brand-600 hover:underline">Effacer les filtres</button>}
+                  {(statusFilter || searchTerm) && <button onClick={clearFilter} className="mt-2 text-sm text-brand-600 hover:underline">Effacer les filtres</button>}
               </div>
           ) : (
           <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">

@@ -15,21 +15,10 @@ export const TaskAttachments: React.FC = () => {
     }
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-  //   // Simulating API call delay for task attachment upload
-  //   setTimeout(() => {
-  //       setLoading(false);
-  //       navigate(`/incidents/${incidentId}`);
-  //   }, 800);
-  // };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!taskId) return;
-
     try {
       setLoading(true);
 
@@ -44,6 +33,7 @@ export const TaskAttachments: React.FC = () => {
       navigate(`/incidents/${incidentId}`);
 
     } catch (error) {
+      console.log(taskId);
       console.error(error);
       alert("Erreur lors de l’envoi des pièces jointes");
     } finally {
@@ -83,7 +73,7 @@ export const TaskAttachments: React.FC = () => {
                             <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
                               Tous types de fichiers acceptés
                             </p>
-                            <input id="task-file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} />
+                            <input id="task-file-upload" name="attachments" type="file" className="sr-only" multiple onChange={handleFileChange} />
                          </label>
                       </div>
                       {files.length > 0 && (

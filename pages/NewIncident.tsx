@@ -38,73 +38,15 @@ export const NewIncident: React.FC = () => {
         dueDate: '',
         attachments: [] as File[],
     });
-    console.log("FORM DATA", formData);
 
-    //const [sites, setSites] = useState<string[]>([]);
     const [sites, setSites] = useState<{ id: number; name: string }[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<Record<string, SubCategory[]>>({});
     const [processDomains, setProcessDomains] = useState<Process[]>([]);
     const [personnes, setPersonnes] = useState<Personne[]>([]);
     const [subProcess, setSubProcess] =
-    useState<Record<string, { id: string; name: string }[]>>({});
+        useState<Record<string, { id: string; name: string }[]>>({});
     const [refsLoaded, setRefsLoaded] = useState(false);
-
-    // useEffect(() => {
-    //     const fetchData = async () => {
-    //         const [sitesData, categoriesData, subCategoriesData, processesData, usersData, subProcessData, personnesData] = await Promise.all([
-    //             api.getSites(),
-    //             api.getCategories(),
-    //             api.getSubCategories(),
-    //             api.getProcesses(),
-    //             api.getUsers(),
-    //             api.getSubProcesses(),
-    //             api.getPersonnes(),
-    //         ]);
-    //         setSites(sitesData);
-    //         setCategories(categoriesData);
-    //         setPersonnes(personnesData);
-    //         console.log('Exemple site ID type:', typeof sites[0]?.id);
-
-    //         // Debugs
-    //         console.log('SitesData complète:', sitesData); // Vérifie si [{id: ?, name: ?}]
-    //         if (sitesData.length > 0) {
-    //             console.log('Type de site[0].id:', typeof sitesData[0]?.id); // Devrait être 'number' ou 'string'
-    //         } else {
-    //             console.error('Sites vides ! Vérifiez API /sites ou DB.');
-    //         }
-
-    //         // 🔴 TRANSFORMATION OBLIGATOIRE ICI
-    //         const groupedSubCategories: Record<string, SubCategory[]> = {};
-    //         const groupedSubProcesses: Record<string, { id: string; name: string }[]> = {};
-
-    //         subCategoriesData.forEach(sc => {
-    //             if (!groupedSubCategories[sc.categoryId]) {
-    //                 groupedSubCategories[sc.categoryId] = [];
-    //             }
-    //             groupedSubCategories[sc.categoryId].push(sc);
-    //         });
-    //         setSubCategories(groupedSubCategories);
-
-    //         subProcessData.forEach(sp => {
-    //             if (!groupedSubProcesses[sp.processId]) {
-    //                 groupedSubProcesses[sp.processId] = [];
-    //             }
-    //             groupedSubProcesses[sp.processId].push({
-    //                 id: sp.id,
-    //                 name: sp.name
-    //             });
-    //         });
-    //         setSubProcess(groupedSubProcesses);
-
-    //         setProcessDomains(processesData);
-    //         //setUsers(usersData);
-    //         //setSubProcess(subProcessData);
-    //         setRefsLoaded(true);
-    //     };
-    //     fetchData();
-    // }, []);
-
 
     useEffect(() => {
         const fetchData = async () => {
@@ -131,7 +73,6 @@ export const NewIncident: React.FC = () => {
             setPersonnes(personnesData);
 
             // 🔎 DEBUG
-            console.log('SitesData complète:', sitesResult);
 
             if (sitesResult.data.length === 0) {
                 console.error('Sites vides ! Vérifiez API /sites ou DB.');
@@ -170,47 +111,43 @@ export const NewIncident: React.FC = () => {
 
     // 3️⃣ useEffect – chargement de l’incident (À AJOUTER / REMPLACER)
     useEffect(() => {
-    if (!isEditMode || !id || !refsLoaded) return;
+        if (!isEditMode || !id || !refsLoaded) return;
 
-    const fetchIncident = async () => {
-        const incident = await api.getIncidentById(id);
-        if (!incident) return;
-        console.log(incident)
+        const fetchIncident = async () => {
+            const incident = await api.getIncidentById(id);
+            if (!incident) return;
 
-        setFormData(prev => ({
-        ...prev,
-        //site: incident.sites?.map(s => s.name) ?? [],
-        siteIds: incident.sites?.map(s => Number(s.id)) ?? [],
-        impactedSiteIds: incident.impactedSites?.map(s => Number(s.id)) ?? [],
-        scope: incident.scope ?? '',
-        description: incident.description ?? '',
-        //dueDate: incident.dueDate?.slice(0, 10) ?? '',
-        dueDate: incident.dueDate
-        ? new Date(incident.dueDate).toISOString().slice(0, 10)
-        : '',
+            setFormData(prev => ({
+                ...prev,
+                siteIds: incident.sites?.map(s => Number(s.id)) ?? [],
+                impactedSiteIds: incident.impactedSites?.map(s => Number(s.id)) ?? [],
+                scope: incident.scope ?? '',
+                description: incident.description ?? '',
+                dueDate: incident.dueDate
+                    ? new Date(incident.dueDate).toISOString().slice(0, 10)
+                    : '',
 
-        // ✅ ICI LA CORRECTION
-        category: incident.categoryId ? String(incident.categoryId) : '',
-        subCategory: incident.subCategoryId ? String(incident.subCategoryId) : '',
-        
-        otherSubCategory: incident.otherSubCategory ?? '',
+                // ✅ ICI LA CORRECTION
+                category: incident.categoryId ? String(incident.categoryId) : '',
+                subCategory: incident.subCategoryId ? String(incident.subCategoryId) : '',
 
-        processDomain: incident.processDomainId ? String(incident.processDomainId) : '',
-        subProcessId: incident.subProcessId ? String(incident.subProcessId) : '',
+                otherSubCategory: incident.otherSubCategory ?? '',
 
-        criticality: incident.criticality ?? 'Moyenne',
-        urgency: incident.urgency ?? 'Moyenne',
+                processDomain: incident.processDomainId ? String(incident.processDomainId) : '',
+                subProcessId: incident.subProcessId ? String(incident.subProcessId) : '',
 
-        //personnes: incident.personnes?.map(p => p.fullname) ?? [],
-        personneIds: incident.personnes?.map(p => Number(p.id)) ?? [],
+                criticality: incident.criticality ?? 'Moyenne',
+                urgency: incident.urgency ?? 'Moyenne',
 
-        responsibleServices: [],
+                personneIds: incident.personnes?.map(p => Number(p.id)) ?? [],
 
-        attachments: [],
-        }));
-    };
+                responsibleServices: [],
 
-    fetchIncident();
+                attachments: [],
+            }));
+        };
+
+        fetchIncident();
     }, [id, isEditMode, refsLoaded, categories, subCategories]);
 
     const handleChange = (
@@ -235,16 +172,6 @@ export const NewIncident: React.FC = () => {
         }
     };
 
-    // const handleMultiSelectChange = (field: string, values: string[]) => {
-    //     setFormData(prev => ({ ...prev, [field]: values }));
-
-    //     // Clear assigned users if responsible services change and selected users are no longer valid
-    //     // (Simplified logic here: just keep them, or clear them if services become empty)
-    //     if (field === 'responsibleServices' && values.length === 0) {
-    //         setFormData(prev => ({ ...prev, [field]: values, assignedUsers: [] }));
-    //     }
-    // };
-
     const mapUrgencyToPriority = (urgency: string): Priority => {
         switch (urgency) {
             case 'Immédiate': return 'CRITICAL';
@@ -255,97 +182,105 @@ export const NewIncident: React.FC = () => {
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    if (formData.subCategory && formData.otherSubCategory) {
-        alert("Choisissez soit une sous-catégorie soit 'Autre'.");
-        return;
-    }
-
-    // ✅ VALIDATION OBLIGATOIRE — SITES CONCERNÉS
-    if (formData.impactedSiteIds.length === 0) {
-        alert("Veuillez sélectionner au moins un site concerné.");
-        return;
-    }
-
-    // (optionnel mais cohérent)
-    if (formData.siteIds.length === 0) {
-        alert("Veuillez sélectionner au moins un site responsable.");
-        return;
-    }
-
-    const payload = new FormData();
-
-    payload.append('description', formData.description);
-    payload.append('scope', formData.scope || '');
-    payload.append('categoryId', String(formData.category));
-    payload.append('dueDate', formData.dueDate);
-    payload.append('urgency', formData.urgency);
-    payload.append('criticality', formData.criticality);
-
-    formData.impactedSiteIds.forEach(id => {
-        payload.append('impactedSiteIds', String(id));
-    });
-
-    formData.siteIds.forEach(id => {
-        payload.append('siteIds', String(id));
-    });
-
-    // Sous-catégorie
-    if (formData.otherSubCategory?.trim()) {
-    payload.append('otherSubCategory', formData.otherSubCategory.trim());
-    } 
-    else if (formData.subCategory) {
-    payload.append('subCategoryId', String(formData.subCategory));
-    }
-
-    // Process
-    if (formData.processDomain)
-        payload.append('processDomainId', String(formData.processDomain));
-
-    if (formData.subProcessId)
-        payload.append('subProcessId', String(formData.subProcessId));
-
-    formData.personneIds.forEach(id => {
-        payload.append('personneIds', String(id));
-    });
-
-    // 🔥 FICHIERS
-    formData.attachments.forEach(file => {
-        payload.append('attachments', file);
-    });
-
-    setLoading(true);
-    try {
-        if (isEditMode) {
-        await api.updateIncident(id!, payload);
-        } else {
-        await api.createIncident(payload);
+        if (formData.subCategory && formData.otherSubCategory) {
+            alert("Choisissez soit une sous-catégorie soit 'Autre'.");
+            return;
         }
-        navigate('/incidents');
-    } finally {
-        setLoading(false);
-    }
+
+        // ✅ VALIDATION DATE D'ÉCHÉANCE
+        if (!formData.dueDate) {
+            alert("Veuillez sélectionner une date d’échéance.");
+            return;
+        }
+
+        const today = new Date();
+
+        const todayString = today.toISOString().split('T')[0];
+
+        if (formData.dueDate < todayString) {
+            alert("La date d’échéance ne peut pas être dans le passé.");
+            return;
+        }
+
+        // ✅ VALIDATION OBLIGATOIRE — SITES CONCERNÉS
+        if (formData.impactedSiteIds.length === 0) {
+            alert("Veuillez sélectionner au moins un site concerné.");
+            return;
+        }
+
+        // (optionnel mais cohérent)
+        if (formData.siteIds.length === 0) {
+            alert("Veuillez sélectionner au moins un site responsable.");
+            return;
+        }
+
+        const payload = new FormData();
+
+        payload.append('description', formData.description);
+        payload.append('scope', formData.scope || '');
+        payload.append('categoryId', String(formData.category));
+        payload.append('dueDate', formData.dueDate);
+        payload.append('urgency', formData.urgency);
+        payload.append('criticality', formData.criticality);
+
+        formData.impactedSiteIds.forEach(id => {
+            payload.append('impactedSiteIds', String(id));
+        });
+
+        formData.siteIds.forEach(id => {
+            payload.append('siteIds', String(id));
+        });
+
+        // Sous-catégorie
+        if (formData.otherSubCategory?.trim()) {
+            payload.append('otherSubCategory', formData.otherSubCategory.trim());
+        }
+        else if (formData.subCategory) {
+            payload.append('subCategoryId', String(formData.subCategory));
+        }
+
+        // Process
+        if (formData.processDomain)
+            payload.append('processDomainId', String(formData.processDomain));
+
+        if (formData.subProcessId)
+            payload.append('subProcessId', String(formData.subProcessId));
+
+        formData.personneIds.forEach(id => {
+            payload.append('personneIds', String(id));
+        });
+
+        // 🔥 FICHIERS
+        formData.attachments.forEach(file => {
+            payload.append('attachments', file);
+        });
+
+        setLoading(true);
+        try {
+            if (isEditMode) {
+                await api.updateIncident(id!, payload);
+            } else {
+                await api.createIncident(payload);
+            }
+            navigate('/incidents');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const availableSubCategories = formData.category ? subCategories[formData.category] || [] : [];
     const availableSubProcesses = formData.processDomain ? subProcess[formData.processDomain] || [] : [];
-    
-    // const availablePersonnes = useMemo(() => {
-    //     if (formData.siteIds.length === 0) return [];
-
-    //     return personnes.map(p => p.fullname);
-
-    // }, [personnes, formData.siteIds]);
 
     const availablePersonnes = useMemo(() => {
-    if (formData.siteIds.length === 0) return [];
+        if (formData.siteIds.length === 0) return [];
 
-    return personnes
-        .map(p => ({
-        label: p.fullname,
-        value: p.id
-        }));
+        return personnes
+            .map(p => ({
+                label: p.fullname,
+                value: p.id
+            }));
     }, [personnes, formData.siteIds]);
 
     return (
@@ -358,7 +293,7 @@ export const NewIncident: React.FC = () => {
                     </button>
                     <h1 className="text-lg font-semibold text-slate-900 dark:text-white">{isEditMode ? 'Modifier l\'incident' : 'Nouvel Incident'}</h1>
                 </div>
-                <div className="flex items-center gap-3">
+                {/* <div className="flex items-center gap-3">
                     <button
                         type="button"
                         onClick={() => navigate(isEditMode ? `/incidents/${id}` : '/incidents')}
@@ -373,7 +308,7 @@ export const NewIncident: React.FC = () => {
                     >
                         {loading ? 'Enregistrement...' : <><Save className="h-4 w-4" /> {isEditMode ? 'Modifier' : 'Enregistrer'}</>}
                     </button>
-                </div>
+                </div> */}
             </div>
 
             <div className="flex-1 overflow-visible p-6 lg:p-10 max-w-5xl mx-auto w-full space-y-8">
@@ -387,13 +322,7 @@ export const NewIncident: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site(s) concerné(s) <span className="text-red-500">*</span></label>
-                            {/* <MultiSelect
-                                required
-                                options={sites.map(s => s.name).filter(Boolean)}
-                                selected={formData.impactedSites}
-                                onChange={(vals) => handleMultiSelectChange('impactedSites', vals)}
-                                placeholder="Choisir les sites..."
-                            /> */}
+
                             <MultiSelect
                                 required
                                 options={sites.map(s => ({
@@ -403,8 +332,8 @@ export const NewIncident: React.FC = () => {
                                 selected={formData.impactedSiteIds}
                                 onChange={(values) =>
                                     setFormData(prev => ({
-                                    ...prev,
-                                    impactedSiteIds: values as number[]
+                                        ...prev,
+                                        impactedSiteIds: values as number[]
                                     }))
                                 }
                                 placeholder="Choisir les sites..."
@@ -420,7 +349,7 @@ export const NewIncident: React.FC = () => {
                                 autoComplete="off"
                                 value={formData.scope}
                                 onChange={handleChange}
-                                placeholder="Ex: Salle 304, Application Web, Ligne de production A"
+                                placeholder="Ex: Agence"
                                 className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                             />
                         </div>
@@ -486,55 +415,37 @@ export const NewIncident: React.FC = () => {
                                             sc => String(sc.id) === formData.subCategory
                                         )?.name || ''
                                     }
-                                    // onChange={(selectedName) => {
-                                    // const selectedSubCategory =
-                                    //     availableSubCategories.find(sc => sc.name === selectedName);
+                                    onChange={(selectedName) => {
+                                        const selectedSubCategory =
+                                            availableSubCategories.find(sc => sc.name === selectedName);
 
-                                    // const id = selectedSubCategory
-                                    //     ? String(selectedSubCategory.id)
-                                    //     : '';
+                                        if (!selectedSubCategory) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                subCategory: '',
+                                                otherSubCategory: '',
+                                                isOtherSubCategory: false
+                                            }));
+                                            return;
+                                        }
 
-                                    // setFormData(prev => ({
-                                    //     ...prev,
-                                    //     subCategory: id,
-                                    //     // 🔥 si ce n’est PAS "Autre", on efface le texte libre
-                                    //     otherSubCategory:
-                                    //     selectedSubCategory?.name === 'Autre'
-                                    //         ? prev.otherSubCategory
-                                    //         : ''
-                                    // }));
-                                    // }}
-onChange={(selectedName) => {
-  const selectedSubCategory =
-    availableSubCategories.find(sc => sc.name === selectedName);
+                                        if (selectedSubCategory.name === 'Autre') {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                subCategory: '',
+                                                otherSubCategory: '',
+                                                isOtherSubCategory: true   // 🔥 MODE AUTRE
+                                            }));
+                                            return;
+                                        }
 
-  if (!selectedSubCategory) {
-    setFormData(prev => ({
-      ...prev,
-      subCategory: '',
-      otherSubCategory: '',
-      isOtherSubCategory: false
-    }));
-    return;
-  }
-
-  if (selectedSubCategory.name === 'Autre') {
-    setFormData(prev => ({
-      ...prev,
-      subCategory: '',
-      otherSubCategory: '',
-      isOtherSubCategory: true   // 🔥 MODE AUTRE
-    }));
-    return;
-  }
-
-  setFormData(prev => ({
-    ...prev,
-    subCategory: String(selectedSubCategory.id),
-    otherSubCategory: '',
-    isOtherSubCategory: false
-  }));
-}}
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            subCategory: String(selectedSubCategory.id),
+                                            otherSubCategory: '',
+                                            isOtherSubCategory: false
+                                        }));
+                                    }}
 
                                     placeholder={
                                         formData.category
@@ -542,51 +453,76 @@ onChange={(selectedName) => {
                                             : 'Sélectionner une catégorie d’abord'
                                     }
                                 />
+                                {/* <SearchSelect
+                                    key={formData.category}   // 🔥 FORCE REMOUNT
+                                    label="Sous-catégorie"
+                                    options={availableSubCategories.map(sc => sc.name)}
+                                    value={
+                                        availableSubCategories.find(
+                                            sc => String(sc.id) === formData.subCategory
+                                        )?.name || ''
+                                    }
+                                    onChange={(selectedName) => {
+                                        const selectedSubCategory =
+                                            availableSubCategories.find(sc => sc.name === selectedName);
+
+                                        if (!selectedSubCategory) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                subCategory: '',
+                                                otherSubCategory: '',
+                                                isOtherSubCategory: false
+                                            }));
+                                            return;
+                                        }
+
+                                        if (selectedSubCategory.name === 'Autre') {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                subCategory: '',
+                                                otherSubCategory: '',
+                                                isOtherSubCategory: true
+                                            }));
+                                            return;
+                                        }
+
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            subCategory: String(selectedSubCategory.id),
+                                            otherSubCategory: '',
+                                            isOtherSubCategory: false
+                                        }));
+                                    }}
+                                    placeholder={
+                                        formData.category
+                                            ? 'Rechercher une sous-catégorie...'
+                                            : 'Sélectionner une catégorie d’abord'
+                                    }
+                                /> */}
                             </div>
                         </div>
                     </div>
-                    {/* {availableSubCategories.find(sc => String(sc.id) === String(formData.subCategory))?.name === 'Autre' && (
+                    {formData.isOtherSubCategory && (
                         <div className="md:col-span-2 animate-in fade-in slide-in-from-top-2">
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                 Précision (Sous-catégorie non listée)
                             </label>
+
                             <input
                                 type="text"
-                                name="otherSubCategory"
+                                name="otherSubCategory"  // ✔ important
                                 autoComplete="off"
                                 value={formData.otherSubCategory}
                                 onChange={(e) =>
-                                setFormData(prev => ({
-                                    ...prev,
-                                    otherSubCategory: e.target.value
-                                }))
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        otherSubCategory: e.target.value
+                                    }))
                                 }
                                 className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                             />
-
                         </div>
-                    )} */}
-{formData.isOtherSubCategory && (
-  <div className="md:col-span-2 animate-in fade-in slide-in-from-top-2">
-    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-      Précision (Sous-catégorie non listée)
-    </label>
-
-    <input
-      type="text"
-      name="otherSubCategory"  // ✔ important
-      autoComplete="off"
-      value={formData.otherSubCategory}
-      onChange={(e) =>
-        setFormData(prev => ({
-          ...prev,
-          otherSubCategory: e.target.value
-        }))
-      }
-      className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
-    />
-  </div>
-)}
+                    )}
 
                     <div>
                         <div>
@@ -730,99 +666,46 @@ onChange={(selectedName) => {
                             5. Assignation
                         </h2>
                         <div className="space-y-6">
-                            {/* <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service(s) responsable(s) du traitement <span className="text-red-500">*</span></label>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                    Service(s) responsable(s) du traitement <span className="text-red-500">*</span>
+                                </label>
+
                                 <MultiSelect
                                     required
                                     options={sites.map(s => ({
-                                    label: s.name,
-                                    value: s.id
+                                        label: s.name,
+                                        value: s.id
                                     }))}
                                     selected={formData.siteIds}
-                                    //onChange={(vals) => handleMultiSelectChange('siteIds', vals)}
-                                    onChange={(values) => {
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        siteIds: values
-                                    }));
-                                    }}
+                                    onChange={(values) =>
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            siteIds: values as number[]
+                                        }))
+                                    }
                                     placeholder="Choisir un ou plusieurs sites..."
                                 />
-                            </div> */}
-                            <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                Service(s) responsable(s) du traitement <span className="text-red-500">*</span>
-                            </label>
-
-                            {/* <MultiSelect
-                                required
-                                options={sites.map(s => s.name)}
-                                selected={formData.siteIds.map(id =>
-                                sites.find(s => Number(s.id) === id)?.name || ''
-                                )}
-                                onChange={(selectedNames) => {
-                                const ids = selectedNames
-                                    .map(name => sites.find(s => s.name === name)?.id)
-                                    .filter(Boolean)
-                                    .map(id => Number(id));
-
-                                setFormData(prev => ({
-                                    ...prev,
-                                    siteIds: ids
-                                }));
-                                }}
-                                placeholder="Choisir un ou plusieurs sites..."
-                            /> */}
-                            <MultiSelect
-                                required
-                                options={sites.map(s => ({
-                                    label: s.name,
-                                    value: s.id
-                                }))}
-                                selected={formData.siteIds}
-                                onChange={(values) =>
-                                    setFormData(prev => ({
-                                    ...prev,
-                                    siteIds: values as number[]
-                                    }))
-                                }
-                                placeholder="Choisir un ou plusieurs sites..."
-                            />
 
                             </div>
 
-                            {/* <div>
+                            <div>
                                 <MultiSelect
                                     label="Personnes assignées"
                                     options={availablePersonnes}
-                                    selected={formData.personnes}
-                                    onChange={(vals) => handleMultiSelectChange('personnes', vals)}
+                                    selected={formData.personneIds}
+                                    onChange={(values) =>
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            personneIds: values as number[]
+                                        }))
+                                    }
                                     placeholder={
                                         formData.siteIds.length > 0
-                                        ? "Sélectionner une ou plusieurs personnes..."
-                                        : "Sélectionner un service d'abord"
+                                            ? "Sélectionner une ou plusieurs personnes..."
+                                            : "Sélectionner un service d'abord"
                                     }
                                 />
-
-                            </div> */}
-
-                            <div>
-                            <MultiSelect
-                                label="Personnes assignées"
-                                options={availablePersonnes}
-                                selected={formData.personneIds}
-                                onChange={(values) =>
-                                setFormData(prev => ({
-                                    ...prev,
-                                    personneIds: values as number[]
-                                }))
-                                }
-                                placeholder={
-                                formData.siteIds.length > 0
-                                    ? "Sélectionner une ou plusieurs personnes..."
-                                    : "Sélectionner un service d'abord"
-                                }
-                            />
                             </div>
 
                         </div>
@@ -835,10 +718,19 @@ onChange={(selectedName) => {
                         </h2>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date d'échéance souhaitée <span className="text-red-500">*</span></label>
+                            {/* <input
+                                type="date"
+                                name="dueDate"
+                                required
+                                value={formData.dueDate}
+                                onChange={handleChange}
+                                className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                            /> */}
                             <input
                                 type="date"
                                 name="dueDate"
                                 required
+                                min={new Date().toISOString().split('T')[0]}   // 🔥 empêche le passé
                                 value={formData.dueDate}
                                 onChange={handleChange}
                                 className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
@@ -848,6 +740,33 @@ onChange={(selectedName) => {
                 </div>
 
             </div>
+            {/* Bottom Action Bar */}
+            <div className="sticky bottom-0 z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-4">
+                <div className="max-w-5xl mx-auto flex justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={() => navigate(isEditMode ? `/incidents/${id}` : '/incidents')}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                    >
+                        Annuler
+                    </button>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="px-6 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 dark:hover:bg-brand-500 rounded-md shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                        {loading
+                            ? 'Enregistrement...'
+                            : <>
+                                <Save className="h-4 w-4" />
+                                {isEditMode ? 'Modifier l’incident' : 'Enregistrer l’incident'}
+                            </>
+                        }
+                    </button>
+                </div>
+            </div>
+
         </form>
     );
 };
