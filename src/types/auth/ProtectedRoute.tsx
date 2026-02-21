@@ -1,27 +1,17 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { hasPermission } from './permissions';
-import { Layout } from '../../../components/Layout';
+import React from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "./AuthContext";
 
-type Props = {
-  permission?: string;
-  user: any;
-  onLogout: () => void;
-  children: React.ReactNode;
-};
+export const ProtectedRoute: React.FC = () => {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
 
-export const ProtectedRoute: React.FC<Props> = ({
-  user,
-  onLogout,
-  children
-}) => {
+  // important: attendre la fin du /me
+  if (isLoading) return null; // ou un loader
+
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  return (
-    <Layout user={user} onLogout={onLogout}>
-      {children}
-    </Layout>
-  );
+  return <Outlet />;
 };

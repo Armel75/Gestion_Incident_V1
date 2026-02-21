@@ -17,7 +17,7 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
         useState<IncidentAttachment[]>([]);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
     const [downloadingTaskId, setDownloadingTaskId] = useState<string | null>(null);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -80,7 +80,14 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
     };
 
     const handleAddTask = () => {
-        navigate(`/incidents/${id}/tasks/new`);
+    if (!incident) return;
+
+    if (incident.status !== "OPEN") {
+        alert("Impossible d'ajouter une tâche : l'incident doit être au statut OPEN.");
+        return;
+    }
+
+    navigate(`/incidents/${id}/tasks/new`);
     };
 
     const handleEditTask = (taskId: string) => {
@@ -260,13 +267,22 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
 
 
     const handleDeleteIncidentAttachment = async (
-        attachmentId: string,
-        e: React.MouseEvent
-        ) => {
+    attachmentId: string,
+    e: React.MouseEvent
+    ) => {
         e.stopPropagation();
 
-        if (!canDeleteIncidentAttachments) {
+        if (!incident || !user) return;
+
+        // 1) déclarateur
+        if (Number(user.id) !== Number(incident.reporterId)) {
             alert("Seul le déclarateur de l'incident peut supprimer une pièce jointe.");
+            return;
+        }
+
+        // 2) statut OPEN
+        if (incident.status !== "OPEN") {
+            alert("Suppression impossible : l'incident doit être au statut OPEN.");
             return;
         }
 
@@ -279,19 +295,24 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             return;
         }
 
-        setIncidentAttachments(prev =>
-            prev.filter(att => att.id !== attachmentId)
-        );
+        setIncidentAttachments(prev => prev.filter(att => att.id !== attachmentId));
     };
 
     const handleAddIncidentAttachment = () => {
-        if (!canAddIncidentAttachments) {
+        if (!incident || !user) return;
+
+        if (Number(user.id) !== Number(incident.reporterId)) {
             alert("Seul le déclarateur de l'incident peut ajouter des pièces jointes.");
             return;
         }
+
+        if (incident.status !== "OPEN") {
+            alert("Impossible d'ajouter une pièce jointe : l'incident doit être au statut OPEN.");
+            return;
+        }
+
         navigate(`/incidents/${id}/attachments`);
     };
-
 
     const isPageReady = !loading && !authLoading && !!incident;
 
@@ -302,6 +323,10 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             </div>
         );
     }
+
+
+    // ✅ Autoriser l'ajout de tâche uniquement si l'incident est OPEN
+    const canAddTask = incident.status === "OPEN";
 
     const PropertyRow = ({ label, value, icon: Icon }: { label: string, value: React.ReactNode, icon?: React.ElementType }) => (
         <div className="flex items-start py-2 group">
@@ -342,15 +367,23 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
     !!user &&
     Number(user.id) === Number(incident.reporterId);
 
-    // ✅ Seul le déclarateur peut ajouter
-    const canAddIncidentAttachments = isReporter;
+    // ✅ Ajouter PJ : déclarateur + incident OPEN uniquement
+    const canAddIncidentAttachments =
+    isReporter && incident.status === "OPEN";
 
     const isReporterDelete =
     !!incident &&
     !!user &&
     Number(user.id) === Number(incident.reporterId);
 
-    const canDeleteIncidentAttachments = isReporterDelete;
+    // ✅ Supprimer PJ : déclarateur + incident OPEN uniquement
+    const canDeleteIncidentAttachments =
+        isReporterDelete && incident.status === "OPEN";
+
+
+   const handleBack = () => {
+        navigate('/incidents');
+   };
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-slate-950 lg:bg-slate-50/50 lg:dark:bg-slate-950 transition-colors duration-200">
@@ -358,9 +391,17 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
             {/* Top Bar - Actions and Context */}
             <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-20 transition-colors duration-200 print:hidden">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/incidents')} className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button
+                        type="button"
+                        onClick={handleBack}
+                        className="inline-flex items-center gap-2 rounded-md border border-brand-600 bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 hover:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition-colors"
+                        aria-label="Retour à la liste des incidents"
+                        title="Retour à la liste des incidents"
+                        >
                         <ArrowLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">Retour aux incidents</span>
                     </button>
+
                     <div className="flex items-center text-sm">
                         <span className="font-mono text-slate-500 dark:text-slate-400 mr-3">{incident.reference}</span>
                         <span className="text-slate-300 dark:text-slate-700 mr-3">|</span>
@@ -445,15 +486,7 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pièces jointes</h3>
-                                        {/* <button
-                                            onClick={handleAddIncidentAttachment}
-                                            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm text-xs"
-                                            title="Accéder à la page d'ajout de fichiers"
-                                        >
-                                            <UploadCloud className="h-4 w-4" />
-                                            <span>Ajouter des pièces jointes</span>
-                                        </button> */}
-                                        {canAddIncidentAttachments ? (
+                                        {/* {canAddIncidentAttachments ? (
                                         <button
                                             onClick={handleAddIncidentAttachment}
                                             className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm text-xs"
@@ -472,7 +505,34 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                             <UploadCloud className="h-4 w-4" />
                                             <span>Ajouter des pièces jointes</span>
                                         </button>
-                                        )}
+                                        )} */}
+                                        {(() => {
+                                        const isOpen = incident.status === "OPEN";
+                                        const canAdd = isReporter && isOpen;
+
+                                        const title = canAdd
+                                            ? "Ajouter des pièces jointes"
+                                            : !isReporter
+                                            ? "Seul le déclarateur peut ajouter des pièces jointes"
+                                            : "Ajout impossible : l'incident doit être OPEN";
+
+                                        return (
+                                            <button
+                                            type="button"
+                                            onClick={canAdd ? handleAddIncidentAttachment : undefined}
+                                            disabled={!canAdd}
+                                            className={
+                                                canAdd
+                                                ? "flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm text-xs"
+                                                : "flex items-center gap-2 bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-md font-medium text-xs cursor-not-allowed opacity-80"
+                                            }
+                                            title={title}
+                                            >
+                                            <UploadCloud className="h-4 w-4" />
+                                            <span>Ajouter des pièces jointes</span>
+                                            </button>
+                                        );
+                                        })()}                                    
                                     </div>
                                     <div className="flex flex-wrap gap-3">
                                         {incidentAttachments.map(att => (
@@ -481,12 +541,6 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                                 onClick={() => handleAttachmentClick(att)}
                                                 className="relative group flex items-center gap-3 p-2 pr-4 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer"
                                             >
-                                                {/* <button
-                                                    onClick={(e) => handleDeleteIncidentAttachment(att.id, e)}
-                                                    className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button> */}
                                                 {canDeleteIncidentAttachments && (
                                                 <button
                                                     onClick={(e) => handleDeleteIncidentAttachment(att.id, e)}
@@ -518,11 +572,28 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                             Sous-tâches
                                         </h3>
-                                        <button
+                                        {/* <button
                                             onClick={handleAddTask}
                                             className="text-xs bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm"
                                         >
                                             <Plus className="h-3 w-3" /> Ajouter tâche
+                                        </button> */}
+                                        <button
+                                        onClick={handleAddTask}
+                                        disabled={!canAddTask}
+                                        title={
+                                            canAddTask
+                                            ? "Ajouter une tâche"
+                                            : "Ajout impossible : l'incident doit être OPEN"
+                                        }
+                                        className={[
+                                            "text-xs px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm",
+                                            canAddTask
+                                            ? "bg-brand-600 hover:bg-brand-700 text-white"
+                                            : "bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-not-allowed opacity-80"
+                                        ].join(" ")}
+                                        >
+                                        <Plus className="h-3 w-3" /> Ajouter tâche
                                         </button>
                                     </div>
 
@@ -672,6 +743,13 @@ export const IncidentDetail: React.FC<{ userRole: RolePermission }> = ({ userRol
                             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Propriétés</h3>
 
                             <div className="space-y-1">
+
+                                <PropertyRow
+                                    label="Déclarant"
+                                    icon={UserIcon}
+                                    value={incident.reporterName?.trim() ? incident.reporterName : "—"}
+                                />
+                                
                                 <PropertyRow label="Statut" value={<StatusBadge status={incident.status} />} />
                                 {/* <PropertyRow label="Priorité" value={<PriorityBadge priority={incident?.priority ?? 'DEFAULT'} />} /> */}
                                 <PropertyRow

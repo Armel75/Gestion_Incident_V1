@@ -6,8 +6,6 @@ import { Category, Incident, Priority, Process, SubCategory, User, Personne } fr
 import { MultiSelect } from '../components/ui/MultiSelect';
 import { SearchSelect } from '../components/ui/SearchSelect';
 
-const KEY_PROCESSES = ['Commande Client', 'Facturation', 'Expédition', 'Paie', 'Onboarding', 'Backup'];
-const SERVICES = ['IT Infrastructure', 'IT Support', 'Logistique', 'Finance', 'RH', 'Services Généraux'];
 const CRITICALITY = ['Faible', 'Moyenne', 'Haute', 'Critique'];
 const URGENCY = ['Faible', 'Moyenne', 'Haute', 'Immédiate'];
 
@@ -16,10 +14,12 @@ export const NewIncident: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>(); // Check for ID to enable Edit Mode
     const [loading, setLoading] = useState(false);
+    const [tickets, setTickets] = useState<any[]>([]);
     const isEditMode = !!id;
 
     // Form State
     const [formData, setFormData] = useState({
+        reporterName: '', // ✅ AJOUT
         siteIds: [] as number[],   // ✅ BON
         scope: '',
         category: '',
@@ -56,7 +56,8 @@ export const NewIncident: React.FC = () => {
                 subCategoriesData,
                 processesData,
                 subProcessData,
-                personnesData
+                personnesData,
+                //ticketsData,
             ] = await Promise.all([
                 api.getSites(1, 1000), // ⚠ on récupère un grand volume pour dropdown
                 api.getCategories(),
@@ -64,6 +65,7 @@ export const NewIncident: React.FC = () => {
                 api.getProcesses(),
                 api.getSubProcesses(),
                 api.getPersonnes(),
+                //api.getGlpiTickets(20),
             ]);
 
             // 🔥 IMPORTANT : récupérer .data
@@ -71,7 +73,7 @@ export const NewIncident: React.FC = () => {
 
             setCategories(categoriesData);
             setPersonnes(personnesData);
-
+            //setTickets(ticketsData);
             // 🔎 DEBUG
 
             if (sitesResult.data.length === 0) {
@@ -122,6 +124,7 @@ export const NewIncident: React.FC = () => {
                 siteIds: incident.sites?.map(s => Number(s.id)) ?? [],
                 impactedSiteIds: incident.impactedSites?.map(s => Number(s.id)) ?? [],
                 scope: incident.scope ?? '',
+                reporterName: incident.reporterName ?? '',
                 description: incident.description ?? '',
                 dueDate: incident.dueDate
                     ? new Date(incident.dueDate).toISOString().slice(0, 10)
@@ -172,17 +175,13 @@ export const NewIncident: React.FC = () => {
         }
     };
 
-    const mapUrgencyToPriority = (urgency: string): Priority => {
-        switch (urgency) {
-            case 'Immédiate': return 'CRITICAL';
-            case 'Haute': return 'HIGH';
-            case 'Faible': return 'LOW';
-            default: return 'MEDIUM';
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.reporterName.trim()) {
+            alert("Veuillez saisir le nom du déclarant.");
+            return;
+        }
 
         if (formData.subCategory && formData.otherSubCategory) {
             alert("Choisissez soit une sous-catégorie soit 'Autre'.");
@@ -218,6 +217,7 @@ export const NewIncident: React.FC = () => {
 
         const payload = new FormData();
 
+        payload.append('reporterName', formData.reporterName.trim()); // ✅ AJOUT
         payload.append('description', formData.description);
         payload.append('scope', formData.scope || '');
         payload.append('categoryId', String(formData.category));
@@ -313,6 +313,31 @@ export const NewIncident: React.FC = () => {
 
             <div className="flex-1 overflow-visible p-6 lg:p-10 max-w-5xl mx-auto w-full space-y-8">
 
+                {/* Bloc 0: Déclarant */}
+                <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-6 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    0. Déclarant
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Nom du déclarant <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                        type="text"
+                        name="reporterName"
+                        autoComplete="off"
+                        required
+                        value={formData.reporterName}
+                        onChange={handleChange}
+                        placeholder="Ex: Jean Dupont"
+                        className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                    />
+                    </div>
+                </div>
+                </section>
 
                 {/* Section 1: Localisation / Portée */}
                 <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
@@ -321,7 +346,7 @@ export const NewIncident: React.FC = () => {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site(s) concerné(s) <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sur quel(s) site(s) l’incident a-t-il eu lieu ? <span className="text-red-500">*</span></label>
 
                             <MultiSelect
                                 required
@@ -718,14 +743,6 @@ export const NewIncident: React.FC = () => {
                         </h2>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date d'échéance souhaitée <span className="text-red-500">*</span></label>
-                            {/* <input
-                                type="date"
-                                name="dueDate"
-                                required
-                                value={formData.dueDate}
-                                onChange={handleChange}
-                                className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
-                            /> */}
                             <input
                                 type="date"
                                 name="dueDate"
@@ -741,7 +758,7 @@ export const NewIncident: React.FC = () => {
 
             </div>
             {/* Bottom Action Bar */}
-            <div className="sticky bottom-0 z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-4">
+            <div className="sticky bottom-0 z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-4 mt-32">
                 <div className="max-w-5xl mx-auto flex justify-end gap-3">
                     <button
                         type="button"

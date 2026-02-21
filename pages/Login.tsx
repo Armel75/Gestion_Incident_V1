@@ -198,9 +198,14 @@ export const Login: React.FC = () => {
               <div className="h-10 w-10 rounded-2xl bg-white/10 ring-1 ring-white/15 flex items-center justify-center">
                 <Lock className="h-5 w-5 text-white/90" aria-hidden="true" />
               </div>
-              <div>
-                <p className="text-white font-semibold tracking-tight">Tracking Incident V2</p>
-                <p className="text-white/60 text-sm">Espace entreprise • Accès sécurisé</p>
+
+              <div className="space-y-2">
+                <p className="text-white text-3xl lg:text-5xl font-bold tracking-tight whitespace-nowrap">
+                  Tracking Incident V2
+                </p>
+                <p className="text-white/70 text-base lg:text-lg font-medium tracking-wide">
+                  Espace entreprise • Accès sécurisé
+                </p>
               </div>
             </div>
 

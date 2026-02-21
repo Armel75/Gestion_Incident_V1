@@ -1,9 +1,9 @@
-import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne  } from '../types';
+import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne } from '../types';
 import { MOCK_DELAY } from '../constants';
 import { IncidentAttachment } from '@/src/types/attachment';
-import { AppJwtPayload } from '../src/types/auth/jwt.types';
 
-const API_BASE_URL = 'http://localhost:3001/api/v1';
+const API_BASE_URL = 'http://localhost:3002/api/v1';
+//const API_BASE_URL = '/api';
 
 const apiFetch = async (path: string, options: RequestInit = {}) => {
   let token = localStorage.getItem('accessToken');
@@ -112,26 +112,6 @@ export const api = {
     };
   },
 
-  // login: async (
-  //   username: string,
-  //   password: string
-  // ): Promise<void> => {
-  //   const response = await fetch(`${API_BASE_URL}/auth/login`, {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ username, password }),
-  //   });
-
-  //   if (!response.ok) {
-  //     throw new Error('Login failed');
-  //   }
-
-  //   const data = await response.json();
-
-  //   localStorage.setItem('accessToken', data.accessToken);
-  //   localStorage.setItem('refreshToken', data.refreshToken);
-  // },
-
   logout: async (): Promise<void> => {
     return new Promise((resolve) => setTimeout(resolve, MOCK_DELAY / 2));
   },
@@ -185,6 +165,21 @@ export const api = {
         });
       }, MOCK_DELAY);
     });
+  },
+
+  queryIncidents: async (payload: any) => {
+    const response = await apiFetch(`/incidents/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur lors du chargement des incidents");
+    }
+
+    return response.json();
   },
 
   getIncidents: async (
@@ -301,19 +296,39 @@ export const api = {
   },
 
 
-  createIncident: async (formData: FormData): Promise<Incident> => {
-    const response = await apiFetch('/incidents', {
-      method: 'POST',
-      body: formData, // PAS de JSON.stringify
-    });
+  // createIncident: async (formData: FormData): Promise<Incident> => {
+  //   const response = await apiFetch('/incidents', {
+  //     method: 'POST',
+  //     body: formData, // PAS de JSON.stringify
+  //   });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error?.message || 'Erreur lors de la création de l’incident');
-    }
+  //   if (!response.ok) {
+  //     const error = await response.json();
+  //     throw new Error(error?.message || 'Erreur lors de la création de l’incident');
+  //   }
 
-    return response.json();
-  },
+  //   return response.json();
+  // },
+
+createIncident: async (formData: FormData): Promise<Incident> => {
+  const response = await apiFetch('/incidents', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const raw = await response.text();
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      message = parsed?.message ?? raw;
+    } catch {}
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : ({} as Incident);
+},
 
 
   getIncidentById: async (id: string): Promise<Incident> => {
@@ -329,22 +344,25 @@ export const api = {
     return response.json();
   },
 
-  updateIncident: async (
-    id: string,
-    formData: FormData
-  ): Promise<Incident> => {
-    const response = await apiFetch(`/incidents/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
+updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
+  const response = await apiFetch(`/incidents/${id}`, {
+    method: 'PUT',
+    body: formData,
+  });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error?.message || 'Erreur lors de la mise à jour de l’incident');
-    }
+  if (!response.ok) {
+    const raw = await response.text();
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      message = parsed?.message ?? raw;
+    } catch {}
+    throw new Error(message || `HTTP ${response.status}`);
+  }
 
-    return response.json();
-  },
+  const text = await response.text();
+  return text ? JSON.parse(text) : ({} as Incident);
+},
 
   deleteIncidentAttachment(incidentId: string, attachmentId: string) {
     return apiFetch(
@@ -574,11 +592,14 @@ export const api = {
     });
 
     if (!response.ok) {
-      throw new Error('Erreur lors du chargement des processus');
+      const message = await response.text();
+      throw new Error(message || 'Erreur lors du chargement des processus');
     }
 
-    return response.json();
+    const data: Process[] = await response.json();
+    return data;
   },
+
   getProcessById: async (id: string): Promise<Process | undefined> => {
     const response = await apiFetch(`/processes/${id}`, {
       method: 'GET',
@@ -628,15 +649,15 @@ export const api = {
 
   // --- SubProcess Methods ---
   getSubProcesses: async (): Promise<SubProcess[]> => {
-    const response = await apiFetch('/sub-processes', {
-      method: 'GET',
-    });
+    const response = await apiFetch('/sub-processes', { method: 'GET' });
 
     if (!response.ok) {
-      throw new Error('Erreur lors du chargement des sous-processus');
+      const message = await response.text();
+      throw new Error(message || 'Erreur lors du chargement des sous-processus');
     }
 
-    return response.json();
+    const data: SubProcess[] = await response.json();
+    return data;
   },
 
   getSubProcessById: async (id: string): Promise<SubProcess | undefined> => {
@@ -672,7 +693,7 @@ export const api = {
     updates: Partial<SubProcess>
   ): Promise<SubProcess> => {
     const response = await apiFetch(`/sub-processes/${id}`, {
-      method: 'PUT', // ou PATCH selon ton API
+      method: 'PATCH', // ou PATCH selon ton API
       body: JSON.stringify(updates),
     });
 
@@ -707,9 +728,9 @@ export const api = {
     return response.json();
   },
 
-/**
-   * 🔹 Détail d’un utilisateur
-   */
+  /**
+     * 🔹 Détail d’un utilisateur
+     */
   getUserById: async (id: number): Promise<User> => {
     const response = await apiFetch(`/users/${id}`, {
       method: 'GET',
@@ -725,7 +746,7 @@ export const api = {
   /**
    * 🔹 Création d’un utilisateur
    */
-  
+
   createUser: async (data: CreateUserDTO): Promise<User> => {
     const response = await apiFetch('/users', {
       method: 'POST',
@@ -1132,73 +1153,73 @@ export const api = {
     return response.blob();
   },
 
-// --- Personne Methods ---
+  // --- Personne Methods ---
 
-getPersonnes: async (): Promise<Personne[]> => {
-  const response = await apiFetch('/personnes', {
-    method: 'GET',
-  });
+  getPersonnes: async (): Promise<Personne[]> => {
+    const response = await apiFetch('/personnes', {
+      method: 'GET',
+    });
 
-  if (!response.ok) {
-    throw new Error('Erreur chargement personnes');
-  }
+    if (!response.ok) {
+      throw new Error('Erreur chargement personnes');
+    }
 
-  return response.json();
-},
+    return response.json();
+  },
 
-getPersonneById: async (id: number): Promise<Personne> => {
-  const response = await apiFetch(`/personnes/${id}`, {
-    method: 'GET',
-  });
+  getPersonneById: async (id: number): Promise<Personne> => {
+    const response = await apiFetch(`/personnes/${id}`, {
+      method: 'GET',
+    });
 
-  if (!response.ok) {
-    throw new Error('Personne introuvable');
-  }
+    if (!response.ok) {
+      throw new Error('Personne introuvable');
+    }
 
-  return response.json();
-},
+    return response.json();
+  },
 
-createPersonne: async (
-  data: { fullname: string }
-): Promise<Personne> => {
-  const response = await apiFetch('/personnes', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  createPersonne: async (
+    data: { fullname: string }
+  ): Promise<Personne> => {
+    const response = await apiFetch('/personnes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error?.message || 'Erreur création personne');
-  }
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur création personne');
+    }
 
-  return response.json();
-},
+    return response.json();
+  },
 
-updatePersonne: async (
-  id: number,
-  data: { fullname: string }
-): Promise<Personne> => {
-  const response = await apiFetch(`/personnes/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  updatePersonne: async (
+    id: number,
+    data: { fullname: string }
+  ): Promise<Personne> => {
+    const response = await apiFetch(`/personnes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
 
-  if (!response.ok) {
-    throw new Error('Erreur modification personne');
-  }
+    if (!response.ok) {
+      throw new Error('Erreur modification personne');
+    }
 
-  return response.json();
-},
+    return response.json();
+  },
 
-deletePersonne: async (id: number): Promise<void> => {
-  const response = await apiFetch(`/personnes/${id}`, {
-    method: 'DELETE',
-  });
+  deletePersonne: async (id: number): Promise<void> => {
+    const response = await apiFetch(`/personnes/${id}`, {
+      method: 'DELETE',
+    });
 
-  if (!response.ok) {
-    throw new Error('Erreur suppression personne');
-  }
-},
+    if (!response.ok) {
+      throw new Error('Erreur suppression personne');
+    }
+  },
 
 
   getSimpleStats: async (): Promise<{
@@ -1217,6 +1238,38 @@ deletePersonne: async (id: number): Promise<void> => {
     }
 
     return response.json();
+  },
+
+  // --- GLPI ---
+  getGlpiTickets: async (limit: number = 50) => {
+    const response = await apiFetch(`/glpi/tickets?limit=${limit}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur chargement tickets GLPI");
+    }
+
+    return response.json(); // { data: [...] }
+  },
+
+  searchGlpiUsers: async (q: string, limit: number = 20) => {
+    const qs = new URLSearchParams({
+      q,
+      limit: String(limit),
+    });
+
+    const response = await apiFetch(`/glpi/users/search?${qs.toString()}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur recherche users GLPI");
+    }
+
+    return response.json(); // { data: [...] }
   },
 
 };

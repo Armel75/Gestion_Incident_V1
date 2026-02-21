@@ -1,51 +1,56 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
-import { Layout } from './components/Layout';
-import { RequireRole } from './src/types/auth/RequireRole';
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import { RequireRole } from "./src/types/auth/RequireRole";
+import { ProtectedRoute } from "./src/types/auth/ProtectedRoute";
 
-import { Dashboard } from './pages/Dashboard';
-import { IncidentList } from './pages/IncidentList';
-import { IncidentDetail } from './pages/IncidentDetail';
-import { NewIncident } from './pages/NewIncident';
-import { Login } from './pages/Login';
-import { Pilotage } from './pages/Pilotage';
-import { Settings } from './pages/Settings';
-import { TaskList } from './pages/TaskList';
-import { NewTask } from './pages/NewTask';
-import { IncidentAttachments } from './pages/IncidentAttachments';
+import { Dashboard } from "./pages/Dashboard";
+import { IncidentList } from "./pages/IncidentList";
+import { IncidentDetail } from "./pages/IncidentDetail";
+import { NewIncident } from "./pages/NewIncident";
+import { Login } from "./pages/Login";
+import { Pilotage } from "./pages/Pilotage";
+import { Settings } from "./pages/Settings";
+import { TaskList } from "./pages/TaskList";
+import { NewTask } from "./pages/NewTask";
+import { IncidentAttachments } from "./pages/IncidentAttachments";
 
-import { SiteList } from './pages/SiteList';
-import { NewSite } from './pages/NewSite';
-import { CategoryList } from './pages/CategoryList';
-import { NewCategory } from './pages/NewCategory';
-import { SubCategoryList } from './pages/SubCategoryList';
-import { NewSubCategory } from './pages/NewSubCategory';
-import { ProcessList } from './pages/ProcessList';
-import { NewProcess } from './pages/NewProcess';
-import { SubProcessList } from './pages/SubProcessList';
-import { NewSubProcess } from './pages/NewSubProcess';
+import { SiteList } from "./pages/SiteList";
+import { NewSite } from "./pages/NewSite";
+import { CategoryList } from "./pages/CategoryList";
+import { NewCategory } from "./pages/NewCategory";
+import { SubCategoryList } from "./pages/SubCategoryList";
+import { NewSubCategory } from "./pages/NewSubCategory";
+import { ProcessList } from "./pages/ProcessList";
+import { NewProcess } from "./pages/NewProcess";
+import { SubProcessList } from "./pages/SubProcessList";
+import { NewSubProcess } from "./pages/NewSubProcess";
 
-import { UserList } from './pages/admin/UserList';
-import { RoleList } from './pages/admin/RoleList';
-import { PermissionList } from './pages/admin/PermissionList';
-import { RolePermissionAssign } from './pages/admin/RolePermissionAssign';
-import { NewUser } from './pages/admin/NewUser';
-import { NewRole } from './pages/admin/NewRole';
-import { NewPermission } from './pages/admin/NewPermission';
-import { NewPersonne } from './pages/NewPersonne';
-import { PersonneList } from './pages/PersonneList';
-import { TaskAttachments } from './pages/TaskAttachments';
+import { UserList } from "./pages/admin/UserList";
+import { RoleList } from "./pages/admin/RoleList";
+import { PermissionList } from "./pages/admin/PermissionList";
+import { RolePermissionAssign } from "./pages/admin/RolePermissionAssign";
+import { NewUser } from "./pages/admin/NewUser";
+import { NewRole } from "./pages/admin/NewRole";
+import { NewPermission } from "./pages/admin/NewPermission";
+
+import { NewPersonne } from "./pages/NewPersonne";
+import { PersonneList } from "./pages/PersonneList";
+import { TaskAttachments } from "./pages/TaskAttachments";
+import { Archives } from "./pages/Archives";
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <Routes>
+      {/* PUBLIC */}
+      <Route path="/login" element={<Login />} />
 
+      {/* PROTÉGÉ */}
+      <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
 
+          <Route path="/archives" element={<Archives />} />
           <Route path="/incidents" element={<IncidentList />} />
           <Route path="/incidents/new" element={<NewIncident />} />
           <Route path="/incidents/:id" element={<IncidentDetail />} />
@@ -60,7 +65,8 @@ const App: React.FC = () => {
             element={<TaskAttachments />}
           />
 
-          <Route element={<RequireRole allowedRoles={['ADMIN']} />}>
+          {/* PROTÉGÉ + ADMIN */}
+          <Route element={<RequireRole allowedRoles={["ADMIN"]} />}>
             <Route path="/pilotage" element={<Pilotage />} />
 
             <Route path="/settings" element={<Settings />} />
@@ -95,18 +101,21 @@ const App: React.FC = () => {
             <Route path="/settings/permissions" element={<PermissionList />} />
             <Route path="/settings/permissions/new" element={<NewPermission />} />
 
-
             <Route path="/settings/personnes" element={<PersonneList />} />
             <Route path="/settings/personnes/new" element={<NewPersonne />} />
             <Route path="/settings/personnes/:id/edit" element={<NewPersonne />} />
 
             <Route path="/settings/assignment" element={<RolePermissionAssign />} />
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </ThemeProvider>
+          {/* fallback privé */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Route>
+
+      {/* fallback public */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 };
 

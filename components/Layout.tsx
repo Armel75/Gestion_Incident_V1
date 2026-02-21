@@ -14,7 +14,8 @@ import {
   Sun,
   Moon,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Archive
 } from 'lucide-react';
 import { APP_NAME } from '../constants';
 import { useTheme } from '../context/ThemeContext';
@@ -47,13 +48,13 @@ export const Layout: React.FC = () => {
 
   const isAdmin = user?.roles?.includes('ADMIN');
 
-  //const primaryRole = user?.roles?.[0]?.name;
   const primaryRole = user?.roles?.[0];
 
   const navigation = [
     { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
     { name: 'Incidents', href: '/incidents', icon: AlertCircle },
     { name: 'Mes Tâches', href: '/tasks', icon: CheckSquare },
+    { name: 'Mes Archives', href: '/archives', icon: Archive },
   ];
 
 

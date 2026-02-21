@@ -68,9 +68,11 @@ export interface Incident {
   otherSubCategory?: string;
   processDomainId?: string;
   sites: Site[];
-  impactedSites: Site[];
+  //impactedSites: Site[];
+  impactedSites?: { id: number; name: string }[];
   personnes?: Personne[];
   serviceEmitter?: string | null;
+  reporterName: string; // ✅ AJOUT
 }
 
 export interface IncidentStats {

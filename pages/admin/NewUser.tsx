@@ -121,6 +121,13 @@ export const NewUser: React.FC = () => {
                 siteId: formData.siteId
               };
 
+              // ✅ Validation UI : un non-admin doit avoir un site
+              if (!isAdmin && !formData.siteId) {
+                alert("Un utilisateur non admin doit appartenir à un site.");
+                setLoading(false);
+                return;
+              }
+
               await api.createUser(createPayload);
         }
         navigate('/settings/users');
@@ -134,6 +141,7 @@ export const NewUser: React.FC = () => {
   const selectedRole = roles.find(r => r.id === selectedRoleId);
   const isAdmin = selectedRole?.name === 'ADMIN';
 
+  const canSubmit = isAdmin || !!formData.siteId;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
@@ -153,8 +161,8 @@ export const NewUser: React.FC = () => {
                  Annuler
              </button>
              <button 
-                type="submit" 
-                disabled={loading}
+                type="submit"
+                disabled={loading || !canSubmit}
                 className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 dark:hover:bg-brand-500 rounded-md shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
              >
                  {loading ? 'Enregistrement...' : <><Save className="h-4 w-4" /> {isEditMode ? 'Modifier' : 'Enregistrer'}</>}
@@ -204,32 +212,8 @@ export const NewUser: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    {/* <select
-                      id="siteId"
-                      name="siteId"
-                      value={formData.siteId ?? ''}
-                      disabled={isAdmin}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFormData(prev => ({
-                          ...prev,
-                          siteId: value ? Number(value) : null
-                        }));
-                      }}
-                      className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 dark:text-white
-                                ring-1 ring-inset ring-slate-300 dark:ring-slate-700
-                                focus:ring-2 focus:ring-brand-600 dark:bg-slate-800
-                                sm:text-sm sm:leading-6"
-                    >
-                      <option value="">Aucun site</option>
-                      {sites.map(site => (
-                        <option key={site.id} value={site.id}>
-                          {site.name}
-                        </option>
-                      ))}
-                    </select> */}
+                    <label htmlFor="Site" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site <span className="text-red-500">*</span></label>
                     <SearchSelect
-                      label="Site"
                       options={sites.map(s => s.name)}
                       value={
                         sites.find(s => s.id === formData.siteId)?.name || ''
