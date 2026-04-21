@@ -3,7 +3,12 @@
 export interface User {
   id: number;
   username: string;
+  matricule?: string | null;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   isActive: boolean;
+  permissions?: string[];
 
   roles: {
     id: number;
@@ -25,9 +30,19 @@ export interface User {
 export type CreateUserDTO = {
   username: string;
   password: string;
+  matricule?: string;
   isActive?: boolean;
   roleIds?: number[];
   siteId?: number | null;
+};
+
+export type RegisterAccountDTO = {
+  matricule: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
 };
 
 /**
@@ -39,6 +54,14 @@ export type UpdateUserDTO = {
   isActive?: boolean;
   roleIds?: number[];
   siteId?: number | null;
+};
+
+export type IncidentComment = {
+  id: string;
+  content: string;
+  userId: string;
+  createdAt: string; // ou Date selon ton mapping
+  user?: { id: string; name: string };
 };
 
 // Incident Types
@@ -65,14 +88,18 @@ export interface Incident {
   reporterId: string;
   subProcessId?: string;
   subCategoryId: string;
+  subCategory?: string;
   otherSubCategory?: string;
   processDomainId?: string;
+  processDomain?: string;
+  subProcess?: string;
   sites: Site[];
-  //impactedSites: Site[];
+  comments?: IncidentComment[];
   impactedSites?: { id: number; name: string }[];
   personnes?: Personne[];
   serviceEmitter?: string | null;
   reporterName: string; // ✅ AJOUT
+  glpiTicketId: number | null; // ✅ nouveau
 }
 
 export interface IncidentStats {
@@ -107,6 +134,10 @@ export interface Site {
     id: number;
     username: string;
   };
+
+  // 🔹 Relation Type
+  typeId: number;
+  type?: Type;
 
   createdAt?: string;
   updatedAt?: string;
@@ -192,3 +223,14 @@ export type CreatePersonneDTO = {
 export type UpdatePersonneDTO = Partial<{
   fullname: string;
 }>;
+
+
+export interface Type {
+  id: number;
+  name: string;
+  createdByUserId: number;
+  createdAt: string;   // JSON → string côté front
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+

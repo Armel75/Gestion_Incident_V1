@@ -11,7 +11,7 @@ export const Settings: React.FC = () => {
     { title: 'Processus', description: 'Gérer les processus métier', icon: FileText, path: '/settings/processes' },
     { title: 'Sous-processus', description: 'Gérer les sous-processus', icon: FileStack, path: '/settings/sub-processes' },
     { title: 'Site', description: 'Gérer les sites et localisations', icon: MapPin, path: '/settings/sites' },
-    { title: 'Type de site', description: 'Gérer les types de sites', icon: Globe, path: '#' },
+    { title: 'Type de site', description: 'Gérer les types de sites', icon: Globe, path: '/settings/types' },
   ];
 
   const adminItems = [

@@ -6,7 +6,7 @@ export const getPermissions = (): string[] => {
 
   try {
     const decoded = decodeJwt(token);
-    return decoded.permissions ?? [];
+    return Array.isArray(decoded.permissions) ? decoded.permissions : [];
   } catch {
     return [];
   }

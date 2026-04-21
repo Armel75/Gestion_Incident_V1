@@ -15,10 +15,13 @@ export const NewIncident: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Check for ID to enable Edit Mode
     const [loading, setLoading] = useState(false);
     const [tickets, setTickets] = useState<any[]>([]);
+    // const [ticketQuery, setTicketQuery] = useState("");
+    // const [loadingTickets, setLoadingTickets] = useState(false);
     const isEditMode = !!id;
 
     // Form State
     const [formData, setFormData] = useState({
+        glpiTicketId: null as number | null, // ✅ Ticket GLPI sélectionné
         reporterName: '', // ✅ AJOUT
         siteIds: [] as number[],   // ✅ BON
         scope: '',
@@ -47,33 +50,43 @@ export const NewIncident: React.FC = () => {
     const [subProcess, setSubProcess] =
         useState<Record<string, { id: string; name: string }[]>>({});
     const [refsLoaded, setRefsLoaded] = useState(false);
+    const RESPONSIBLE_TYPE_ID = 1;
+    const [responsibleSites, setResponsibleSites] = useState<{ id: number; name: string }[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             const [
                 sitesResult,
+                responsibleSitesResult, // ✅ NEW
                 categoriesData,
                 subCategoriesData,
                 processesData,
                 subProcessData,
                 personnesData,
-                //ticketsData,
             ] = await Promise.all([
                 api.getSites(1, 1000), // ⚠ on récupère un grand volume pour dropdown
+                api.getSitesByTypeId(RESPONSIBLE_TYPE_ID, 1, 1000), // ✅ NEW
                 api.getCategories(),
                 api.getSubCategories(),
                 api.getProcesses(),
                 api.getSubProcesses(),
                 api.getPersonnes(),
-                //api.getGlpiTickets(20),
             ]);
 
             // 🔥 IMPORTANT : récupérer .data
             setSites(sitesResult.data);
 
+            // ✅ NEW: liste filtrée côté backend
+            setResponsibleSites(responsibleSitesResult.data);
+
             setCategories(categoriesData);
             setPersonnes(personnesData);
-            //setTickets(ticketsData);
+
+            // ⚡ GLPI en arrière-plan, non bloquant
+            api.getGlpiTickets()
+                .then(data => setTickets(data))
+                .catch(() => setTickets([]));
+
             // 🔎 DEBUG
 
             if (sitesResult.data.length === 0) {
@@ -111,7 +124,17 @@ export const NewIncident: React.FC = () => {
         fetchData();
     }, []);
 
-    // 3️⃣ useEffect – chargement de l’incident (À AJOUTER / REMPLACER)
+    useEffect(() => {
+        if (!responsibleSites.length) return;
+
+        setFormData(prev => {
+            const allowed = new Set(responsibleSites.map(s => s.id));
+            const cleaned = prev.siteIds.filter(id => allowed.has(id));
+            if (cleaned.length === prev.siteIds.length) return prev;
+            return { ...prev, siteIds: cleaned };
+        });
+    }, [responsibleSites]);
+
     useEffect(() => {
         if (!isEditMode || !id || !refsLoaded) return;
 
@@ -121,6 +144,7 @@ export const NewIncident: React.FC = () => {
 
             setFormData(prev => ({
                 ...prev,
+                glpiTicketId: incident.glpiTicketId ?? null, // ✅ AJOUT
                 siteIds: incident.sites?.map(s => Number(s.id)) ?? [],
                 impactedSiteIds: incident.impactedSites?.map(s => Number(s.id)) ?? [],
                 scope: incident.scope ?? '',
@@ -183,6 +207,12 @@ export const NewIncident: React.FC = () => {
             return;
         }
 
+        // ✅ VALIDATION OBLIGATOIRE — CATÉGORIE PRINCIPALE
+        if (!formData.category || String(formData.category).trim() === "") {
+            alert("Veuillez sélectionner une catégorie principale.");
+            return;
+        }
+
         if (formData.subCategory && formData.otherSubCategory) {
             alert("Choisissez soit une sous-catégorie soit 'Autre'.");
             return;
@@ -218,6 +248,11 @@ export const NewIncident: React.FC = () => {
         const payload = new FormData();
 
         payload.append('reporterName', formData.reporterName.trim()); // ✅ AJOUT
+
+        if (formData.glpiTicketId) {
+            payload.append('glpiTicketId', String(formData.glpiTicketId));
+        }
+
         payload.append('description', formData.description);
         payload.append('scope', formData.scope || '');
         payload.append('categoryId', String(formData.category));
@@ -283,6 +318,15 @@ export const NewIncident: React.FC = () => {
             }));
     }, [personnes, formData.siteIds]);
 
+
+    const responsibleSiteOptions = useMemo(() => {
+        const impactedSet = new Set(formData.impactedSiteIds);
+        return sites
+            .filter(s => impactedSet.has(s.id))
+            .map(s => ({ label: s.name, value: s.id }));
+    }, [sites, formData.impactedSiteIds]);
+
+
     return (
         <form onSubmit={handleSubmit} encType="multipart/form-data" className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
             {/* Top Bar */}
@@ -315,28 +359,63 @@ export const NewIncident: React.FC = () => {
 
                 {/* Bloc 0: Déclarant */}
                 <section className="bg-white dark:bg-slate-900 rounded-lg shadow-xs border border-slate-200 dark:border-slate-800 p-6">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-6 pb-2 border-b border-slate-100 dark:border-slate-800">
-                    0. Déclarant
-                </h2>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-6 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        0. Déclarant
+                    </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Nom du déclarant <span className="text-red-500">*</span>
-                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                Nom du déclarant <span className="text-red-500">*</span>
+                            </label>
 
-                    <input
-                        type="text"
-                        name="reporterName"
-                        autoComplete="off"
-                        required
-                        value={formData.reporterName}
-                        onChange={handleChange}
-                        placeholder="Ex: Jean Dupont"
-                        className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
-                    />
+                            <input
+                                type="text"
+                                name="reporterName"
+                                autoComplete="off"
+                                required
+                                value={formData.reporterName}
+                                onChange={handleChange}
+                                placeholder="Ex: Jean Dupont"
+                                className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                            />
+                        </div>
+                        {/* Ticket GLPI */}
+                        <div>
+                            <SearchSelect
+                                label="Ticket GLPI (optionnel)"
+                                options={tickets.map((t: any) => {
+                                    const id = t.id ?? t.ticketId ?? t.glpiId;
+                                    const content = t.content ?? t.description ?? "";
+                                    const safeContent = String(content).replace(/\s+/g, " ").trim();
+                                    return `${id} — ${safeContent || `Ticket ${id}`}`;
+                                })}
+                                value={(() => {
+                                    if (!formData.glpiTicketId) return "";
+                                    const found = tickets.find(
+                                        (t: any) =>
+                                            String(t.id ?? t.ticketId ?? t.glpiId) === String(formData.glpiTicketId)
+                                    );
+                                    if (!found) return "";
+                                    const id = found.id ?? found.ticketId ?? found.glpiId;
+                                    const content = found.content ?? found.description ?? "";
+                                    const safeContent = String(content).replace(/\s+/g, " ").trim();
+                                    return `${id} — ${safeContent || `Ticket ${id}`}`;
+                                })()}
+                                onChange={(selectedLabel) => {
+                                    if (!selectedLabel) {
+                                        setFormData(prev => ({ ...prev, glpiTicketId: null }));
+                                        return;
+                                    }
+                                    const idPart = String(selectedLabel).split("—")[0].trim();
+                                    const n = Number(idPart);
+                                    setFormData(prev => ({ ...prev, glpiTicketId: Number.isFinite(n) ? n : null }));
+                                }}
+                                //onSearch={(q) => setTicketQuery(q)}   // ✅ AJOUT
+                                placeholder={tickets.length ? "Rechercher un ticket GLPI..." : "Aucun ticket chargé"}
+                            />
+                        </div>
                     </div>
-                </div>
                 </section>
 
                 {/* Section 1: Localisation / Portée */}
@@ -693,12 +772,12 @@ export const NewIncident: React.FC = () => {
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Service(s) responsable(s) du traitement <span className="text-red-500">*</span>
+                                    Service(s) / Site(s) responsable(s) du traitement <span className="text-red-500">*</span>
                                 </label>
 
                                 <MultiSelect
                                     required
-                                    options={sites.map(s => ({
+                                    options={responsibleSites.map(s => ({
                                         label: s.name,
                                         value: s.id
                                     }))}
@@ -709,7 +788,7 @@ export const NewIncident: React.FC = () => {
                                             siteIds: values as number[]
                                         }))
                                     }
-                                    placeholder="Choisir un ou plusieurs sites..."
+                                    placeholder="Choisir un ou plusieurs services..."
                                 />
 
                             </div>

@@ -1,9 +1,38 @@
-import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne } from '../types';
+import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne, Type, RegisterAccountDTO } from '../types';
 import { MOCK_DELAY } from '../constants';
 import { IncidentAttachment } from '@/src/types/attachment';
 
 const API_BASE_URL = 'http://localhost:3002/api/v1';
-//const API_BASE_URL = '/api';
+//const API_BASE_URL = "/api/incident";
+
+type AuthFailureHandler = () => void;
+
+let authFailureHandler: AuthFailureHandler | null = null;
+let refreshPromise: Promise<string | null> | null = null;
+
+export const registerAuthFailureHandler = (handler: AuthFailureHandler) => {
+  authFailureHandler = handler;
+};
+
+
+const clearSession = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+};
+
+const notifyAuthFailure = () => {
+  clearSession();
+
+  if (authFailureHandler) {
+    authFailureHandler();
+    return;
+  }
+
+  if (window.location.pathname !== '/incident/login') {
+    window.location.replace('/incident/login');
+  }
+};
+
 
 const apiFetch = async (path: string, options: RequestInit = {}) => {
   let token = localStorage.getItem('accessToken');
@@ -28,18 +57,26 @@ const apiFetch = async (path: string, options: RequestInit = {}) => {
 
   let response = await doFetch();
 
-  // 🔥 Access token expiré → refresh
-  if (response.status === 401) {
-    const newToken = await refreshAccessToken();
+  const isAuthRoute =
+    path === '/auth/login' ||
+    path === '/auth/refresh' ||
+    path === '/auth/logout';
+
+  if (response.status === 401 && !isAuthRoute) {
+    const newToken = await getFreshAccessToken();
 
     if (!newToken) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      notifyAuthFailure();
       throw new Error('Session expirée');
     }
 
     token = newToken;
-    response = await doFetch(); // 🔁 rejoue la requête
+    response = await doFetch();
+
+    if (response.status === 401) {
+      notifyAuthFailure();
+      throw new Error('Session expirée');
+    }
   }
 
   return response;
@@ -50,6 +87,7 @@ interface JwtPayload {
   username: string;
   fullName: string;
   roles?: string[];
+  permissions?: string[];
 }
 
 export function decodeJwt(token: string): JwtPayload {
@@ -57,28 +95,133 @@ export function decodeJwt(token: string): JwtPayload {
   return JSON.parse(atob(payload));
 }
 
+/**
+ * 🔹 Changement de mot de passe par un admin (sans ancien mot de passe)
+ */
+export async function adminSetUserPassword(id: number, newPassword: string): Promise<void> {
+  const response = await apiFetch(`/users/${id}/admin-set-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newPassword })
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Erreur lors du changement de mot de passe.');
+  }
+}
+
+
+/**
+ * 🔹 Réinitialisation du mot de passe (reset-password)
+ */
+export async function resetPassword(token: string, password: string): Promise<any> {
+  const response = await apiFetch(`/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erreur lors de la réinitialisation.');
+  }
+  return data;
+}
+
+
+/**
+ * 🔹 Demande de récupération de mot de passe
+ */
+export async function forgotPassword(email: string): Promise<void> {
+  const response = await apiFetch(`/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Erreur lors de la demande de récupération.');
+  }
+}
+
+/**
+ * 🔹 Changement de mot de passe utilisateur (self-service)
+ */
+export async function changeUserPassword(
+  id: number,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const response = await apiFetch(`/users/${id}/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Erreur lors du changement de mot de passe.');
+  }
+}
+
 
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = localStorage.getItem('refreshToken');
   if (!refreshToken) return null;
 
-  const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  });
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
 
-  if (!res.ok) return null;
+    if (!res.ok) return null;
 
-  const data = await res.json();
+    const data = await res.json();
 
-  localStorage.setItem('accessToken', data.accessToken);
-  localStorage.setItem('refreshToken', data.refreshToken);
+    if (!data?.accessToken || !data?.refreshToken) {
+      return null;
+    }
 
-  return data.accessToken;
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+
+    return data.accessToken;
+  } catch {
+    return null;
+  }
+};
+
+
+const getFreshAccessToken = async (): Promise<string | null> => {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
 };
 
 export const api = {
+  // ...existing code...
+  changeUserPassword,
+
+  registerAccount: async (payload: RegisterAccountDTO): Promise<User> => {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Registration failed');
+    }
+
+    return response.json();
+  },
 
 
   login: async (
@@ -112,21 +255,31 @@ export const api = {
     };
   },
 
+  // logout: async (): Promise<void> => {
+  //   return new Promise((resolve) => setTimeout(resolve, MOCK_DELAY / 2));
+  // },
+
   logout: async (): Promise<void> => {
-    return new Promise((resolve) => setTimeout(resolve, MOCK_DELAY / 2));
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    try {
+      if (refreshToken) {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+      }
+    } catch {
+      // best effort
+    } finally {
+      notifyAuthFailure();
+    }
   },
 
   me: async () => {
-    const token = localStorage.getItem('accessToken');
-
-    if (!token) {
-      throw new Error('No access token');
-    }
-
     const res = await apiFetch('/auth/me', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      method: 'GET',
     });
 
     if (!res.ok) {
@@ -137,8 +290,11 @@ export const api = {
   },
 
   refresh: async () => {
-    const token = await refreshAccessToken();
-    if (!token) throw new Error('Refresh failed');
+    const token = await getFreshAccessToken();
+    if (!token) {
+      notifyAuthFailure();
+      throw new Error('Refresh failed');
+    }
   },
 
   getStats: async (): Promise<IncidentStats> => {
@@ -296,40 +452,27 @@ export const api = {
   },
 
 
-  // createIncident: async (formData: FormData): Promise<Incident> => {
-  //   const response = await apiFetch('/incidents', {
-  //     method: 'POST',
-  //     body: formData, // PAS de JSON.stringify
-  //   });
+  createIncident: async (formData: FormData): Promise<Incident> => {
+    const response = await apiFetch('/incidents', {
+      method: 'POST',
+      body: formData,
+    });
 
-  //   if (!response.ok) {
-  //     const error = await response.json();
-  //     throw new Error(error?.message || 'Erreur lors de la création de l’incident');
-  //   }
+    if (!response.ok) {
+      const text = await response.text(); // récupère même si ce n’est pas du JSON
+      let details: any = text;
+      try { details = JSON.parse(text); } catch { }
 
-  //   return response.json();
-  // },
+      console.error("[createIncident] HTTP", response.status, details);
 
-createIncident: async (formData: FormData): Promise<Incident> => {
-  const response = await apiFetch('/incidents', {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const raw = await response.text();
-    let message = raw;
-    try {
-      const parsed = JSON.parse(raw);
-      message = parsed?.message ?? raw;
-    } catch {}
-    throw new Error(message || `HTTP ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : ({} as Incident);
-},
-
+      throw new Error(
+        (details && (details.message || details.error)) ||
+        `Erreur serveur (${response.status})`
+      );
+    }
+    const text = await response.text();
+    return text ? JSON.parse(text) : ({} as Incident);
+  },
 
   getIncidentById: async (id: string): Promise<Incident> => {
     const response = await apiFetch(`/incidents/${id}`, {
@@ -344,25 +487,25 @@ createIncident: async (formData: FormData): Promise<Incident> => {
     return response.json();
   },
 
-updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
-  const response = await apiFetch(`/incidents/${id}`, {
-    method: 'PUT',
-    body: formData,
-  });
+  updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
+    const response = await apiFetch(`/incidents/${id}`, {
+      method: 'PUT',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const raw = await response.text();
-    let message = raw;
-    try {
-      const parsed = JSON.parse(raw);
-      message = parsed?.message ?? raw;
-    } catch {}
-    throw new Error(message || `HTTP ${response.status}`);
-  }
+    if (!response.ok) {
+      const raw = await response.text();
+      let message = raw;
+      try {
+        const parsed = JSON.parse(raw);
+        message = parsed?.message ?? raw;
+      } catch { }
+      throw new Error(message || `HTTP ${response.status}`);
+    }
 
-  const text = await response.text();
-  return text ? JSON.parse(text) : ({} as Incident);
-},
+    const text = await response.text();
+    return text ? JSON.parse(text) : ({} as Incident);
+  },
 
   deleteIncidentAttachment(incidentId: string, attachmentId: string) {
     return apiFetch(
@@ -389,6 +532,63 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
     }
   },
 
+
+  closeIncident: async (id: string | number, payload: { content: string }) => {
+    const res = await apiFetch(`/incidents/${id}/close`, {
+      method: "PUT",
+      body: JSON.stringify({ content: payload.content }),
+    });
+
+    // helper: extrait un message lisible quel que soit le format renvoyé
+    const buildErrorMessage = (status: number, statusText: string, errBody: any) => {
+      const parts: string[] = [];
+
+      // En-tête HTTP
+      parts.push(`Clôture incident impossible (${status} ${statusText})`);
+
+      // Champs backend possibles
+      const main =
+        errBody?.error ??
+        errBody?.message ??
+        errBody?.detail ??
+        errBody?.title;
+
+      if (typeof main === "string" && main.trim()) {
+        parts.push(main.trim());
+      }
+
+      // Zod / validation: issues
+      if (Array.isArray(errBody?.issues) && errBody.issues.length) {
+        const issues = errBody.issues
+          .map((i: any) => {
+            const path = Array.isArray(i?.path) ? i.path.join(".") : "";
+            const msg = i?.message ? String(i.message) : "Invalid value";
+            return path ? `${path}: ${msg}` : msg;
+          })
+          .join(" | ");
+        parts.push(`Détails: ${issues}`);
+      }
+
+      // Fallback si body texte brut
+      if (!main && typeof errBody === "string" && errBody.trim()) {
+        parts.push(errBody.trim());
+      }
+
+      return parts.join(" — ");
+    };
+
+    if (!res.ok) {
+      // essaie JSON, sinon texte brut
+      const errBody = await res
+        .json()
+        .catch(async () => await res.text().catch(() => ""));
+
+      throw new Error(buildErrorMessage(res.status, res.statusText, errBody));
+    }
+
+    return res.json();
+  },
+
   getSites: async (
     page: number = 1,
     limit: number = 10
@@ -413,9 +613,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
     return response.json();
   },
 
-
-
-  createSite: async (payload: { name: string }): Promise<Site> => {
+  createSite: async (payload: { name: string; typeId: number }): Promise<Site> => {
     const response = await apiFetch('/sites', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -440,7 +638,10 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
     return response.json();
   },
 
-  updateSite: async (id: string, payload: { name: string }): Promise<Site> => {
+  updateSite: async (
+    id: string,
+    payload: { name: string; typeId: number }
+  ): Promise<Site> => {
     const response = await apiFetch(`/sites/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -464,6 +665,85 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
+  getSitesByTypeId: async (
+    typeId: number,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ data: Site[]; total: number; page: number; totalPages: number }> => {
+    const response = await apiFetch(`/sites/by-type/${typeId}?page=${page}&limit=${limit}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors du chargement des sites par type");
+    }
+
+    return response.json();
+  },
+
+  getTypes: async (
+    page = 1,
+    size = 10
+  ): Promise<Type[]> => {
+    const response = await apiFetch(`/types?page=${page}&size=${size}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur chargement des types");
+    }
+
+    return response.json();
+  },
+
+  // 2) READ (détail par ID)
+  getTypeById: async (id: number | string): Promise<Type> => {
+    const response = await apiFetch(`/types/${id}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`Erreur getTypeById (${response.status}): ${text || "—"}`);
+    }
+
+    return response.json();
+  },
+
+  // 3) CREATE
+  createType: async (payload: { name: string }): Promise<Type> => {
+    const response = await apiFetch(`/types`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur création du type");
+    }
+
+    return response.json();
+  },
+
+  // 4) UPDATE
+  updateType: async (
+    id: number,
+    payload: { name?: string }
+  ): Promise<Type> => {
+    const response = await apiFetch(`/types/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur modification du type");
+    }
+
+    return response.json();
+  },
+
 
   // --- Category Methods ---
   getCategories: async (): Promise<Category[]> => {
@@ -489,6 +769,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   createCategory: async (data: Partial<Category>): Promise<Category> => {
     const response = await apiFetch('/categories', {
       method: 'POST',
@@ -501,6 +782,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   updateCategory: async (id: string, data: Partial<Category>): Promise<Category> => {
     const response = await apiFetch(`/categories/${id}`, {
       method: 'PATCH',
@@ -513,6 +795,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   deleteCategory: async (id: string): Promise<void> => {
     const response = await apiFetch(`/categories/${id}`, {
       method: 'DELETE',
@@ -524,7 +807,6 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
-
 
   // --- SubCategory Methods ---
   getSubCategories: async (): Promise<SubCategory[]> => {
@@ -538,6 +820,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   getSubCategoryById: async (id: string): Promise<SubCategory | undefined> => {
     const response = await apiFetch(`/sub-categories/${id}`, {
       method: 'GET',
@@ -549,6 +832,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   createSubCategory: async (data: Partial<SubCategory>): Promise<SubCategory> => {
     const response = await apiFetch('/sub-categories', {
       method: 'POST',
@@ -561,6 +845,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   updateSubCategory: async (id: string, updates: Partial<SubCategory>): Promise<SubCategory> => {
     const response = await apiFetch(`/sub-categories/${id}`, {
       method: 'PATCH',
@@ -573,6 +858,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   deleteSubCategory: async (id: string): Promise<void> => {
     const response = await apiFetch(`/sub-categories/${id}`, {
       method: 'DELETE',
@@ -611,6 +897,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   createProcess: async (data: Partial<Process>): Promise<Process> => {
     const response = await apiFetch('/processes', {
       method: 'POST',
@@ -623,6 +910,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   updateProcess: async (id: string, updates: Partial<Process>): Promise<Process> => {
     const response = await apiFetch(`/processes/${id}`, {
       method: 'PATCH',
@@ -635,6 +923,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
 
     return response.json();
   },
+
   deleteProcess: async (id: string): Promise<void> => {
     const response = await apiFetch(`/processes/${id}`, {
       method: 'DELETE',
@@ -716,8 +1005,8 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
     return response.json();
   },
 
-  getUsers: async (): Promise<User[]> => {
-    const response = await apiFetch('/users', {
+  getUsers: async (skip = 0, take = 20): Promise<User[]> => {
+    const response = await apiFetch(`/users?skip=${skip}&take=${take}`, {
       method: 'GET',
     });
 
@@ -1222,12 +1511,7 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
   },
 
 
-  getSimpleStats: async (): Promise<{
-    open: number;
-    inProgress: number;
-    closed: number;
-    cancelled: number;
-  }> => {
+  getSimpleStats: async (): Promise<IncidentStats> => {
     const response = await apiFetch('/incidents/stats/simple', {
       method: 'GET',
     });
@@ -1241,8 +1525,9 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
   },
 
   // --- GLPI ---
-  getGlpiTickets: async (limit: number = 50) => {
-    const response = await apiFetch(`/glpi/tickets?limit=${limit}`, {
+
+  getGlpiTickets: async () => {
+    const response = await apiFetch(`/glpi/tickets`, {
       method: "GET",
     });
 
@@ -1251,7 +1536,34 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
       throw new Error(error?.message || "Erreur chargement tickets GLPI");
     }
 
-    return response.json(); // { data: [...] }
+    const json = await response.json();
+    return json.data ?? [];
+  },
+
+  getGlpiTicketById: async (id: number) => {
+    const response = await apiFetch(`/glpi/tickets/${id}`, { method: "GET" });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || "Erreur chargement ticket GLPI");
+    }
+
+    const json = await response.json();
+    return json.data;
+  },
+
+  searchGlpiTickets: async (q: string, limit: number = 20) => {
+    const response = await apiFetch(`/glpi/tickets/search?q=${encodeURIComponent(q)}&limit=${limit}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || "Erreur recherche tickets GLPI");
+    }
+
+    const json = await response.json();
+    return json.data ?? [];
   },
 
   searchGlpiUsers: async (q: string, limit: number = 20) => {
@@ -1270,6 +1582,36 @@ updateIncident: async (id: string, formData: FormData): Promise<Incident> => {
     }
 
     return response.json(); // { data: [...] }
+  },
+
+  exportIncidentsPdf: async (payload: any) => {
+    const response = await apiFetch(`/incidents/export/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(errText || "Erreur export PDF");
+    }
+
+    return response.blob();
+  },
+
+  exportIncidentsExcel: async (payload: any) => {
+    const response = await apiFetch(`/incidents/export/excel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(errText || "Erreur export Excel");
+    }
+
+    return response.blob();
   },
 
 };

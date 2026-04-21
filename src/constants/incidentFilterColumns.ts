@@ -25,19 +25,19 @@ export type FilterField =
   | "dueDate";
 
 export const OPERATORS_BY_TYPE: Record<ColumnType, { op: Operator; label: string; needsValue: boolean }[]> = {
-      siteSelect: [
+  siteSelect: [
     { op: "eq", label: "égal", needsValue: true },
     { op: "neq", label: "différent", needsValue: true },
     { op: "in", label: "dans la liste", needsValue: true },
     { op: "isEmpty", label: "est vide", needsValue: false },
     { op: "isNotEmpty", label: "n’est pas vide", needsValue: false },
   ],
-    personneSelect: [
+  personneSelect: [
     { op: "eq", label: "égal", needsValue: true },
     { op: "in", label: "dans la liste", needsValue: true },
     { op: "isEmpty", label: "est vide", needsValue: false },
     { op: "isNotEmpty", label: "n’est pas vide", needsValue: false },
-    ],
+  ],
   string: [
     { op: "contains", label: "contient", needsValue: true },
     { op: "eq", label: "égal", needsValue: true },
@@ -76,13 +76,44 @@ export const OPERATORS_BY_TYPE: Record<ColumnType, { op: Operator; label: string
   boolean: [{ op: "eq", label: "égal", needsValue: true }],
 };
 
+// =============================
+// ✅ STATUT: mapping centralisé (single source of truth)
+// =============================
+export type IncidentStatusDb = "OPEN" | "IN_PROGRESS" | "CLOSED" | "CANCELLED";
+
+export type StatusOption = Readonly<{ value: IncidentStatusDb; label: string }>;
+
+export const STATUS_OPTIONS: ReadonlyArray<StatusOption> = [
+  { value: "OPEN", label: "Ouvert" },
+  { value: "IN_PROGRESS", label: "Encours" },
+  { value: "CLOSED", label: "Clôturé" },
+  { value: "CANCELLED", label: "Annulé" },
+] as const;
+
+export const STATUS_LABEL_BY_VALUE: Readonly<Record<string, string>> = {
+  OPEN: "Ouvert",
+  IN_PROGRESS: "Encours",
+  CLOSED: "Clôturé",
+  CANCELLED: "Annulé",
+
+  // compat si jamais tu as RESOLVED dans l’historique
+  RESOLVED: "Clôturé",
+};
+
+export function getStatusLabel(dbValue: unknown): string {
+  const v = String(dbValue ?? "");
+  return STATUS_LABEL_BY_VALUE[v] ?? v;
+}
+
 export const INCIDENT_FILTER_COLUMNS = [
   { field: "reference", label: "Référence", type: "string" as const },
   { field: "description", label: "Description", type: "string" as const },
-  { field: "status", label: "Statut", type: "enum" as const, enumValues: ["OPEN", "IN_PROGRESS", "CLOSED", "CANCELLED", "RESOLVED"] },
+
+  // ✅ valeurs DB uniquement (pas de CLOSED ici)
+  { field: "status", label: "Statut", type: "enum" as const, enumValues: ["OPEN", "IN_PROGRESS", "CLOSED", "CANCELLED"] },
   { field: "urgency", label: "Priorité", type: "enum" as const, enumValues: ["Faible", "Moyenne", "Haute", "Immédiate"] },
-{ field: "emitterServiceId", label: "Service émetteur", type: "siteSelect" as const },
-{ field: "receiverServiceId", label: "Service traitant", type: "siteSelect" as const },
+ { field: "emitterSiteId", label: "Site émetteur", type: "siteSelect" as const },
+ { field: "receiverSiteId", label: "Site traitant", type: "siteSelect" as const },
   { field: "assignedPersonneId", label: "Assigné (personne)", type: "personneSelect" as const },
   { field: "createdAt", label: "Créé le", type: "datetime" as const },
   { field: "dueDate", label: "Échéance", type: "date" as const },

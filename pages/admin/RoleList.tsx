@@ -20,7 +20,7 @@ export const RoleList: React.FC = () => {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: number, name: string) => {
       if (window.confirm(`Êtes-vous sûr de vouloir supprimer le rôle "${name}" ?`)) {
           await api.deleteRole(id);
           fetchItems();

@@ -49,14 +49,14 @@ export const TaskList: React.FC = () => {
                              <div className="flex-1 min-w-0">
                                  <div className="flex items-center justify-between">
                                      <h3 className={`text-sm font-medium ${task.status === 'DONE' ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
-                                         {task.title}
+                                         {task.name}
                                      </h3>
                                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
                                          task.status === 'DONE' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
                                          task.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                                          'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                      }`}>
-                                         {task.status === 'OPEN' ? 'À faire' : task.status === 'IN_PROGRESS' ? 'En cours' : 'Terminé'}
+                                         {task.status === 'TODO' ? 'À faire' : task.status === 'IN_PROGRESS' ? 'En cours' : 'Terminé'}
                                      </span>
                                  </div>
                                  {task.description && (

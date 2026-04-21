@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { ArrowLeft, Save } from 'lucide-react';
-import { CreateUserDTO, Role, Site } from '../../types';
+import { Role, Site, User } from '../../types';
 import { SearchSelect } from '@/components/ui/SearchSelect';
 
 export const NewUser: React.FC = () => {
@@ -11,70 +11,52 @@ export const NewUser: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [matriculeError, setMatriculeError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
 
   const isEditMode = !!id;
   const [formData, setFormData] = useState({
     username: '',
-    roleIds: [] as number[], // ✅ tableau de nombres
-    siteId: null as number | null, // 🔥 AJOUT
+    email: '',
+    matricule: '',
+    firstName: '',
+    lastName: '',
+    roleIds: [] as number[],
+    siteId: null as number | null,
     isActive: true,
     password: ''
   });
 
-  // useEffect(() => {
-  //       const init = async () => {
-  //       const availableRoles = await api.getRoles();
-  //       const avalaibleSites = await api.getSites();
-  //       setRoles(availableRoles);
-  //       setSites(avalaibleSites);
-
-  //       if (isEditMode && id) {
-  //         const item = await api.getUserById(Number(id));
-  //         if (item) {
-  //           setFormData({
-  //             username: item.username,
-  //             roleIds: item.roles
-  //               ? roles
-  //                   .filter(r => item.roles.includes(r.name))
-  //                   .map(r => r.id)
-  //               : [],
-  //             isActive: item.isActive,
-  //             password: ''
-  //           });
-  //         }
-  //       }
-  //   };
-  //   init();
-  // }, [id, isEditMode]);
-
   useEffect(() => {
     const init = async () => {
       const availableRoles = await api.getRoles();
-
-      // 🔥 récupération paginée
       const sitesResult = await api.getSites(1, 1000);
-
       setRoles(availableRoles);
-
-      // 🔥 IMPORTANT : on prend .data
       setSites(sitesResult.data);
-
+      // Récupère tous les utilisateurs pour la vérification du matricule
+      try {
+        const users = await api.getUsers(0, 1000);
+        setAllUsers(users);
+      } catch {}
       if (isEditMode && id) {
         const item = await api.getUserById(Number(id));
         if (item) {
           setFormData({
-            username: item.username,
-            roleIds: item.roles
-            ? item.roles.map(role => role.id)
-            : [],
-            siteId: item.siteId ?? null, // 🔥 IMPORTANT
+            username: item.username || '',
+            email: item.email || '',
+            matricule: item.matricule || '',
+            firstName: item.firstName || '',
+            lastName: item.lastName || '',
+            roleIds: item.roles ? item.roles.map(role => role.id) : [],
+            siteId: item.siteId ?? null,
             isActive: item.isActive,
             password: ''
           });
         }
       }
     };
-
     init();
   }, [id, isEditMode]);
 
@@ -88,52 +70,75 @@ export const NewUser: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMatriculeError(null);
+    setEmailError(null);
+    setUsernameError(null);
+          // Vérification unicité du username (hors édition du même user)
+          if (formData.username) {
+            const existsUsername = allUsers.some(u => u.username && u.username === formData.username && (!isEditMode || u.id !== Number(id)));
+            if (existsUsername) {
+              setUsernameError('Ce nom d\'utilisateur existe déjà. Veuillez en saisir un autre.');
+              setLoading(false);
+              return;
+            }
+          }
     setLoading(true);
     try {
-        const payload = {
-          username: formData.username,
-          roleIds: formData.roleIds, // ✅ CE QUE LE BACKEND ATTEND
-          isActive: formData.isActive,
-          ...(formData.password ? { password: formData.password } : {})
-        };
-
-        if (isEditMode && id) {
-
-            const updatePayload = {
-              username: formData.username,
-              roleIds: formData.roleIds,
-              isActive: formData.isActive,
-              siteId: formData.siteId,
-              ...(formData.password ? { password: formData.password } : {})
-            };
-
-             await api.updateUser(Number(id), updatePayload);
-        } else {
-             if (!formData.password) {
-                throw new Error("Password is required");
-              }
-
-              const createPayload: CreateUserDTO = {
-                username: formData.username,
-                password: formData.password, // 🔥 obligatoire
-                roleIds: formData.roleIds,
-                isActive: formData.isActive,
-                siteId: formData.siteId
-              };
-
-              // ✅ Validation UI : un non-admin doit avoir un site
-              if (!isAdmin && !formData.siteId) {
-                alert("Un utilisateur non admin doit appartenir à un site.");
-                setLoading(false);
-                return;
-              }
-
-              await api.createUser(createPayload);
+      // Vérification unicité du matricule (hors édition du même user)
+      if (formData.matricule) {
+        const exists = allUsers.some(u => u.matricule && u.matricule === formData.matricule && (!isEditMode || u.id !== Number(id)));
+        if (exists) {
+          setMatriculeError('Ce matricule existe déjà. Veuillez en saisir un autre.');
+          setLoading(false);
+          return;
         }
-        navigate('/settings/users');
+      }
+      // Vérification unicité de l'email (hors édition du même user)
+      if (formData.email) {
+        const existsEmail = allUsers.some(u => u.email && u.email === formData.email && (!isEditMode || u.id !== Number(id)));
+        if (existsEmail) {
+          setEmailError('Cet email existe déjà. Veuillez en saisir un autre.');
+          setLoading(false);
+          return;
+        }
+      }
+      const payload = {
+        username: formData.username,
+        email: formData.email,
+        matricule: formData.matricule,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        roleIds: formData.roleIds,
+        isActive: formData.isActive,
+        ...(formData.password ? { password: formData.password } : {})
+      };
+      if (isEditMode && id) {
+        const updatePayload = {
+          ...payload,
+          siteId: formData.siteId,
+        };
+        await api.updateUser(Number(id), updatePayload);
+      } else {
+        if (!formData.password) {
+          throw new Error("Password is required");
+        }
+        const createPayload: any = {
+          ...payload,
+          password: formData.password,
+          siteId: formData.siteId
+        };
+        // ✅ Validation UI : un non-admin doit avoir un site
+        if (!isAdmin && !formData.siteId) {
+          alert("Un utilisateur non admin doit appartenir à un site.");
+          setLoading(false);
+          return;
+        }
+        await api.createUser(createPayload);
+      }
+      navigate('/settings/users');
     } catch (error) {
-        console.error(error);
-        setLoading(false);
+      console.error(error);
+      setLoading(false);
     }
   };
 
@@ -181,6 +186,53 @@ export const NewUser: React.FC = () => {
                         name="username" 
                         required
                         value={formData.username}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                      />
+                      {usernameError && <div className="text-red-500 text-xs mt-1">{usernameError}</div>}
+                  </div>
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email <span className="text-red-500">*</span></label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                        />
+                        {emailError && <div className="text-red-500 text-xs mt-1">{emailError}</div>}
+                    </div>
+                    <div>
+                        <label htmlFor="matricule" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Matricule <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          id="matricule"
+                          name="matricule"
+                          value={formData.matricule}
+                          onChange={handleChange}
+                          className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                        />
+                        {matriculeError && <div className="text-red-500 text-xs mt-1">{matriculeError}</div>}
+                    </div>
+                    <div>
+                      <label htmlFor="firstName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Prénom <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                      />
+                  </div>
+                    <div>
+                      <label htmlFor="lastName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
                         onChange={handleChange}
                         className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                       />

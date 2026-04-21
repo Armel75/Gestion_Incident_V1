@@ -18,6 +18,9 @@ import {
   Archive
 } from 'lucide-react';
 import { APP_NAME } from '../constants';
+import { Key } from 'lucide-react';
+import { ChangePasswordModal } from './ui/ChangePasswordModal';
+import { api } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../src/types/auth/AuthContext';
 import logo from '@/template/logo.png';
@@ -32,6 +35,8 @@ export const Layout: React.FC = () => {
     
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changePwdError, setChangePwdError] = useState<string|null>(null);
 
   if (isLoading) {
     return (
@@ -46,9 +51,9 @@ export const Layout: React.FC = () => {
     );
   }
 
-  const isAdmin = user?.roles?.includes('ADMIN');
-
-  const primaryRole = user?.roles?.[0];
+  const roleNames = user?.roles?.map((role) => role.name) ?? [];
+  const isAdmin = roleNames.includes('ADMIN');
+  const primaryRole = roleNames[0];
 
   const navigation = [
     { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
@@ -146,7 +151,26 @@ export const Layout: React.FC = () => {
           </nav>
           
           
-          {/* {!collapsed && <div className="mt-8 mb-2 px-3 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider animate-in fade-in duration-300">Compte</div>} */}
+          {/* Option Changer de thème */}
+          <nav className="space-y-0.5 mb-2">
+            <button
+              type="button"
+              className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 mb-1 w-full text-left ${collapsed ? 'justify-center' : ''} text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white`}
+              onClick={toggleTheme}
+            >
+              <svg xmlns="#!" className={`h-5 w-5 flex-shrink-0 ${collapsed ? '' : 'mr-3'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.07l-.71.71M21 12h-1M4 12H3m16.66 5.66l-.71-.71M4.05 4.93l-.71-.71M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              {!collapsed && <span>Changer de couleur</span>}
+            </button>
+            <button
+              type="button"
+              className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 mb-1 w-full text-left ${collapsed ? 'justify-center' : ''} text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white`}
+              onClick={() => setShowChangePassword(true)}
+            >
+              <Key className={`h-5 w-5 flex-shrink-0 ${collapsed ? '' : 'mr-3'}`} />
+              {!collapsed && <span>Modifier mot de passe</span>}
+            </button>
+          </nav>
+          {/* Bloc Compte réservé aux admins */}
           {isAdmin && (
             <>
               {!collapsed && (
@@ -160,34 +184,6 @@ export const Layout: React.FC = () => {
             </>
           )}
         </div>
-
-        {/* User Footer */}
-        {/* <div className="border-t border-slate-100 dark:border-slate-800 p-3">
-          <div className={`flex items-center p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group ${collapsed ? 'justify-center' : 'justify-between'}`}>
-            <div className="flex items-center min-w-0">
-              <img
-                className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-700"
-                src={logo}
-                alt="Logo"
-                onError={(e) => {
-                  e.currentTarget.onerror = null; // évite boucle infinie
-                  e.currentTarget.src = 'template/logo.png'; // ou une autre image du dossier public
-                }}
-              />
-              {!collapsed && (
-                <div className="ml-3 min-w-0">
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-white">{user?.username ?? 'Chargement...'}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate capitalize">{primaryRole?.toLowerCase()}</p>
-                </div>
-              )}
-            </div>
-            {!collapsed && (
-              <button onClick={handleLogout} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 ml-2">
-                <LogOut className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div> */}
         {/* User Footer */}
         <div className="border-t border-slate-100 dark:border-slate-800 p-3">
           <div className="rounded-md bg-slate-50/60 dark:bg-slate-950/30 p-2">
@@ -236,6 +232,22 @@ export const Layout: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Modal de changement de mot de passe */}
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => { setShowChangePassword(false); setChangePwdError(null); }}
+        onSubmit={async (currentPassword, newPassword) => {
+          setChangePwdError(null);
+          if (!user?.id) throw new Error('Utilisateur non connecté');
+          try {
+            await api.changeUserPassword(user.id, currentPassword, newPassword);
+          } catch (err: any) {
+            setChangePwdError(err.message || 'Erreur lors du changement de mot de passe.');
+            throw err;
+          }
+        }}
+      />
 
       {/* Mobile Sidebar (Drawer) */}
       <div className={`lg:hidden fixed inset-0 z-50 flex ${mobileSidebarOpen ? '' : 'pointer-events-none'}`}>

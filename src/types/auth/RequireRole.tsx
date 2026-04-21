@@ -13,8 +13,8 @@ export const RequireRole = ({ allowedRoles }: RequireRoleProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  const hasRole = user.roles?.some(role =>
-    allowedRoles.includes(role)
+  const hasRole = user.roles?.some((role) =>
+    allowedRoles.includes(role.name)
   );
 
   if (!hasRole) {

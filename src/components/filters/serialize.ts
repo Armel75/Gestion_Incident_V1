@@ -20,10 +20,6 @@ function isNumberLike(t: unknown): t is "number" {
   return t === "number";
 }
 
-function isSiteServiceSelect(t: unknown): t is "siteServiceSelect" {
-  return t === "siteServiceSelect";
-}
-
 export function serializeToPayload(args: {
   logic: Logic;
   rows: FilterRowState[];
@@ -38,26 +34,37 @@ export function serializeToPayload(args: {
       const col = INCIDENT_FILTER_COLUMNS.find((c) => c.field === r.field);
       if (!col) return null;
 
-      // operators without value
-      if (r.op === "isEmpty" || r.op === "isNotEmpty") {
-        return { field: r.field, op: r.op };
+      // ✅ SAFETY: normalisation STATUT (empêche les ops "fantômes" type notIn)
+      // On n'autorise que eq/neq/in côté UI pour status.
+      let op = r.op as any;
+      if (r.field === "status" && op !== "eq" && op !== "neq" && op !== "in") {
+        op = "eq"; // fallback safe
       }
 
-      // ✅ siteSelect (emitterSiteId / receiverSiteId)
+      // operators without value
+      if (op === "isEmpty" || op === "isNotEmpty") {
+        return { field: r.field, op };
+      }
+
+      // ✅ siteSelect (emitterServiceId / receiverServiceId)
       if ((col as any).type === "siteSelect") {
-        if (r.op === "in") {
+        if (op === "in") {
           const arr = Array.isArray(r.value) ? r.value : [];
           if (arr.length === 0) return null;
-          return { field: r.field, op: "in", value: arr.map(Number).filter(Number.isFinite) };
+          return {
+            field: r.field,
+            op: "in",
+            value: arr.map(Number).filter(Number.isFinite),
+          };
         }
 
         const n = Number(r.value);
         if (!Number.isFinite(n)) return null;
-        return { field: r.field, op: r.op, value: n };
+        return { field: r.field, op, value: n };
       }
 
       // date/datetime special handling
-      if (isDateLike((col as any).type) && r.op === "between") {
+      if (isDateLike((col as any).type) && op === "between") {
         const v: [string, string] =
           Array.isArray(r.value) && r.value.length >= 2
             ? [String(r.value[0] ?? ""), String(r.value[1] ?? "")]
@@ -70,20 +77,20 @@ export function serializeToPayload(args: {
         return { field: r.field, op: "between", value: [a, b] };
       }
 
-      if (isDateLike((col as any).type) && r.op === "dayEq") {
+      if (isDateLike((col as any).type) && op === "dayEq") {
         if (!r.value) return null;
         const { startIso, endIso } = dayBoundsUtc(String(r.value));
         return { field: r.field, op: "between", value: [startIso, endIso] };
       }
 
-      if (isDateLike((col as any).type) && (r.op === "gte" || r.op === "lte")) {
+      if (isDateLike((col as any).type) && (op === "gte" || op === "lte")) {
         if (!r.value) return null;
         const { startIso, endIso } = dayBoundsUtc(String(r.value));
-        return { field: r.field, op: r.op, value: r.op === "gte" ? startIso : endIso };
+        return { field: r.field, op, value: op === "gte" ? startIso : endIso };
       }
 
       // number between
-      if (isNumberLike((col as any).type) && r.op === "between") {
+      if (isNumberLike((col as any).type) && op === "between") {
         const v: [number | "", number | ""] =
           Array.isArray(r.value) && r.value.length >= 2
             ? [r.value[0] ?? "", r.value[1] ?? ""]
@@ -98,10 +105,11 @@ export function serializeToPayload(args: {
         r.value === undefined ||
         r.value === "" ||
         (Array.isArray(r.value) && r.value.length === 0)
-      )
+      ) {
         return null;
+      }
 
-      return { field: r.field, op: r.op, value: r.value };
+      return { field: r.field, op, value: r.value };
     })
     .filter(Boolean) as QueryPayload["filters"];
 

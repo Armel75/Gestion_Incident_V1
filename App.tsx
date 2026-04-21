@@ -38,12 +38,20 @@ import { NewPersonne } from "./pages/NewPersonne";
 import { PersonneList } from "./pages/PersonneList";
 import { TaskAttachments } from "./pages/TaskAttachments";
 import { Archives } from "./pages/Archives";
+import { TypeList } from "./pages/TypeList";
+import { NewType } from "./pages/NewType";
+import { Register } from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 const App: React.FC = () => {
   return (
     <Routes>
       {/* PUBLIC */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* PROTÉGÉ */}
       <Route element={<ProtectedRoute />}>
@@ -73,6 +81,10 @@ const App: React.FC = () => {
             <Route path="/settings/sites" element={<SiteList />} />
             <Route path="/settings/sites/new" element={<NewSite />} />
             <Route path="/settings/sites/:id/edit" element={<NewSite />} />
+
+            <Route path="/settings/types" element={<TypeList />} />
+            <Route path="/settings/types/new" element={<NewType />} />
+            <Route path="/settings/types/:id/edit" element={<NewType />} />
 
             <Route path="/settings/categories" element={<CategoryList />} />
             <Route path="/settings/categories/new" element={<NewCategory />} />

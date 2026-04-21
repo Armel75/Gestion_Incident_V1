@@ -29,7 +29,7 @@ export const SiteSelectInput: React.FC<Props> = ({
     (async () => {
       try {
         setLoading(true);
-        const resp = await (api as any).getSites(); // ✅ tu dois avoir un endpoint sites
+        const resp = await (api as any).getSites(1, 1000); // ✅ tu dois avoir un endpoint sites
         const list = toArray<Site>(resp);
         if (!cancelled) setSites(list);
       } catch (e) {

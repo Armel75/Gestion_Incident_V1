@@ -14,7 +14,7 @@ import "@fontsource/jetbrains-mono/500.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/incident">
       <AuthProvider>
         <ThemeProvider>
           <App />

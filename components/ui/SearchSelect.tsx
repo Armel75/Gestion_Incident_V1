@@ -5,6 +5,7 @@ interface SearchSelectProps {
   options: string[];
   value: string;
   required?: boolean;
+  disabled?: boolean;
   placeholder?: string;
   onChange: (value: string) => void;
 }
@@ -15,6 +16,7 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
   value,
   onChange,
   required,
+  disabled = false,
   placeholder = 'Rechercher...'
 }) => {
   const [query, setQuery] = useState('');
@@ -59,18 +61,20 @@ const filteredOptions = useMemo(() => {
       <input
         type="text"
         value={open ? query : value}
-        onFocus={() => setOpen(true)}
+        onFocus={() => !disabled && setOpen(true)}
         onChange={e => setQuery(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         className="
           w-full rounded-md border px-3 py-2 text-sm
           bg-white text-slate-900 border-slate-300
           dark:bg-slate-800 dark:text-white dark:border-slate-700
           focus:outline-none focus:ring-2 focus:ring-brand-600
+          disabled:cursor-not-allowed disabled:opacity-60
         "
       />
 
-      {open && filteredOptions.length > 0 && (
+      {open && !disabled && filteredOptions.length > 0 && (
         <ul
           className="
             absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border shadow

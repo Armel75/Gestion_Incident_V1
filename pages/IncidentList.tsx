@@ -4,8 +4,6 @@ import { Incident } from "../types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { StatusBadge, PriorityBadge } from "../components/ui/Badge";
 import {
-  ChevronLeft,
-  ChevronRight,
   Plus,
   ArrowUpDown,
   XCircle,
@@ -13,6 +11,7 @@ import {
   FileText,
   CheckCircle,
   Loader2,
+  Info,
   Filter as FilterIcon,
 } from "lucide-react";
 import { useAuth } from "../src/types/auth/AuthContext";
@@ -21,7 +20,7 @@ import { useAuth } from "../src/types/auth/AuthContext";
 import { FilterPanel } from "../src/components/filters/FilterPanel";
 import type { FilterRowState, Logic } from "../src/components/filters/types";
 import { serializeToPayload } from "../src/components/filters/serialize";
-
+import type { QueryPayload } from "../src/components/filters/serialize";
 
 type AppliedQuery = {
   logic: Logic;
@@ -35,7 +34,7 @@ type AppliedQuery = {
 export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode = "normal" }) => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [appliedPayload, setAppliedPayload] = useState<QueryPayload | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status"); // conserve la logique existante via URL
@@ -53,11 +52,13 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
   const [draftLogic, setDraftLogic] = useState<Logic>("AND");
   const [draftRows, setDraftRows] = useState<FilterRowState[]>([]);
 
-  // const [appliedLogic, setAppliedLogic] = useState<Logic>("AND");
-  // const [appliedRows, setAppliedRows] = useState<FilterRowState[]>([]);
-  // const [currentPage, setCurrentPage] = useState(1);
   const requestSeq = React.useRef(0);
   const PAGE_SIZE = 10;
+
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [closeTarget, setCloseTarget] = useState<any | null>(null);
+  const [closeComment, setCloseComment] = useState("");
+  const [closing, setClosing] = useState(false);
 
   const [appliedQuery, setAppliedQuery] = useState<AppliedQuery>({
     logic: "AND",
@@ -67,6 +68,40 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
     pageSize: PAGE_SIZE,
     tz: "Africa/Douala",
   });
+
+  const openCloseModal = (e: React.MouseEvent, incident: any) => {
+    e.stopPropagation();
+    setCloseTarget(incident);
+    setCloseComment("");
+    setCloseModalOpen(true);
+  };
+
+  const submitClose = async () => {
+    if (!closeTarget) return;
+
+    const trimmed = closeComment.trim();
+    if (trimmed.length < 3) {
+      alert("Le commentaire de clôture est obligatoire (min 3 caractères).");
+      return;
+    }
+
+    try {
+      setClosing(true);
+      // ✅ backend attend "content"
+      await (api as any).closeIncident(closeTarget.id, { content: trimmed });
+
+      setCloseModalOpen(false);
+      setCloseTarget(null);
+      setCloseComment("");
+
+      fetchIncidents(appliedQuery);
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Impossible de clôturer l'incident");
+    } finally {
+      setClosing(false);
+    }
+  };
 
   const filtersActive = appliedQuery.rows.length > 0 || !!statusFilter;
 
@@ -91,26 +126,30 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
         // on garde ça en attendant l’étape tri (plus tard).
       });
 
+      // ✅ immuable au moment du clic
+      setAppliedPayload(payload);
 
-      // ✅ Mode ARCHIVES : uniquement CLOSED + CANCELLED
+      // ✅ Si le Filter Builder a déjà un filtre status, on ne l'écrase PAS.
+      const hasStatusFromBuilder = payload.filters.some((f) => f.field === "status");
+
       if (mode === "archives") {
-        // on retire toute éventuelle règle "status" déjà présente
-        payload.filters = payload.filters.filter((f) => f.field !== "status");
-
-        payload.filters.push({
-          field: "status",
-          op: "in",
-          value: ["CLOSED", "CANCELLED"],
-        });
+        // En archives, on force CLOSED/CANCELLED uniquement si l'utilisateur n'a pas choisi un status explicitement.
+        if (!hasStatusFromBuilder) {
+          payload.filters.push({
+            field: "status",
+            op: "in",
+            value: ["CLOSED", "CANCELLED"],
+          });
+        }
       } else {
-        // ✅ Mode NORMAL : exclure CLOSED + CANCELLED par défaut
-        // Si l’URL impose un status (?status=OPEN), on le respecte.
-        payload.filters = payload.filters.filter((f) => f.field !== "status");
-
+        // Mode normal :
+        // - si l'URL impose un status, elle est prioritaire
+        // - sinon, si le builder a un status, on le respecte
+        // - sinon, on applique le notIn par défaut
         if (statusFilter) {
+          payload.filters = payload.filters.filter((f) => f.field !== "status");
           payload.filters.push({ field: "status", op: "eq", value: statusFilter });
-        } else {
-          // IMPORTANT: nécessite que ton backend supporte "notIn"
+        } else if (!hasStatusFromBuilder) {
           payload.filters.push({
             field: "status",
             op: "notIn",
@@ -118,8 +157,6 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
           });
         }
       }
-
-      console.log("[FETCH payload]", payload);
 
       const result = await (api as any).queryIncidents(payload);
 
@@ -149,7 +186,7 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
     setSearchParams({});
     setDraftLogic("AND");
     setDraftRows([]);
-
+    setAppliedPayload(null);
     setAppliedQuery({
       logic: "AND",
       rows: [],
@@ -161,54 +198,96 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
   };
 
   const applyFilters = () => {
-      setAppliedQuery((prev) => ({
-        ...prev,
-        logic: draftLogic,
-        rows: draftRows,
-        page: 1, // ✅ reset page
-      }));
+    setAppliedQuery((prev) => ({
+      ...prev,
+      logic: draftLogic,
+      rows: draftRows,
+      page: 1, // ✅ reset page
+    }));
 
     setFilterOpen(false);
   };
-  
+
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType });
+    const BOM = "\uFEFF";
+
+    const blob = new Blob([BOM + content], {
+      type: `${mimeType};charset=utf-8;`,
+    });
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName;
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
     URL.revokeObjectURL(url);
   };
 
   const handleExportExcel = (e: React.MouseEvent, incident: any) => {
     e.stopPropagation();
 
-    const formatValue = (value: any) => {
-      if (value === null || value === undefined) return "";
-      if (value instanceof Date) {
-        return value.toLocaleDateString("fr-FR");
-      }
-      return `"${String(value).replace(/"/g, '""')}"`;
+    const sep = ";";
+
+    const csvEscape = (value: any) => {
+      const s = String(value ?? "");
+      return `"${s.replace(/"/g, '""')}"`;
     };
 
+    const createdAt = incident.createdAt
+      ? new Date(incident.createdAt).toLocaleDateString("fr-FR")
+      : "";
+
+    const dueDate = incident.dueDate
+      ? new Date(incident.dueDate).toLocaleDateString("fr-FR")
+      : "";
+
+    const sites =
+      Array.isArray(incident.sites) && incident.sites.length
+        ? incident.sites.map((s: any) => s.name).join(", ")
+        : "";
+
+    const glpiTicketNumber = incident.glpiTicketId ? String(incident.glpiTicketId) : "";
+
     const rows = [
-      ["Référence", "Description", "Statut", "Priorité", "Sites", "Créé le"],
       [
+        "Nom du déclarant",
+        "Ticket GLPI", // ✅ AJOUT
+        "Référence",
+        "Description",
+        "Statut",
+        "Priorité",
+        "Service émetteur",
+        "Site récepteur",
+        "Créé le",
+        "Échéance",
+      ],
+      [
+        incident.reporterName ?? "", // ✅ déclarant corrigé
+        glpiTicketNumber, // ✅ Ticket GLPI
         incident.reference,
         incident.description,
         incident.status,
         incident.urgency,
-        incident.sites?.map((s: any) => s.name).join(", ") ?? "",
-        new Date(incident.createdAt),
+        incident.serviceEmitter ?? "",
+        sites,
+        createdAt,
+        dueDate,
       ],
     ];
 
-    const csvContent = rows.map((row) => row.map(formatValue).join(";")).join("\n");
+    const csvContent = rows
+      .map((row) => row.map(csvEscape).join(sep))
+      .join("\n");
 
-    downloadFile(csvContent, `incident_${incident.reference}.csv`, "text/csv;charset=utf-8;");
+    downloadFile(
+      csvContent,
+      `incident_${incident.reference}.csv`,
+      "text/csv"
+    );
   };
 
   const handleExportPDF = async (e: React.MouseEvent, incident: any) => {
@@ -237,27 +316,6 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
     }
   };
 
-  const handleCloseIncident = async (e: React.MouseEvent, incident: any) => {
-    e.stopPropagation();
-
-    const confirmed = window.confirm(
-      `Confirmez-vous la clôture définitive de l'incident ${incident.reference} ?`
-    );
-    if (!confirmed) return;
-
-    try {
-      const formData = new FormData();
-      formData.append("status", "CLOSED");
-
-      await (api as any).updateIncident(incident.id, formData);
-
-      fetchIncidents(appliedQuery);
-    } catch (error) {
-      console.error("Erreur lors de la clôture de l’incident", error);
-      alert("Impossible de clôturer l'incident");
-    }
-  };
-
   const urgencyToPriority = (urgency: Incident["urgency"]) => {
     switch (urgency) {
       case "Faible":
@@ -275,6 +333,23 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
 
   // ✅ Si jamais tu veux afficher des incidents même en fallback, on garde incidents tel quel
   const displayedIncidents = useMemo(() => incidents, [incidents]);
+  const userRoles: string[] = Array.isArray((user as any)?.roles)
+    ? ((user as any).roles as string[])
+    : (user as any)?.role
+      ? [String((user as any).role)]
+      : [];
+
+  const isControleur = userRoles.includes("CONTROLEUR");
+
+  const canCloseIncident = (incident: any) => {
+    const isAlreadyClosed = incident.status === "CLOSED" || incident.status === "CANCELLED";
+    if (isAlreadyClosed) return false;
+
+    const isReporter = Number(user?.id) === Number(incident.reporterId);
+
+    // ✅ Déclarant OU contrôleur
+    return isReporter || isControleur;
+  };
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 transition-colors duration-200">
@@ -284,7 +359,15 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight">
             Incidents
           </h1>
-
+          <div
+            className="hidden sm:flex items-center gap-2 rounded-md px-2 py-1 text-sm
+                          text-slate-500 dark:text-slate-400
+                          bg-slate-50 dark:bg-slate-800/60
+                          border border-slate-200 dark:border-slate-700"
+          >
+            <Info className="h-3.5 w-3.5" />
+            <span>Cliquez n'importe où sur une ligne pour voir les détails de l'incident</span>
+          </div>
           {filtersActive && (
             <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-900/50 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10">
               Filtres actifs
@@ -302,11 +385,11 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
         <div className="flex items-center gap-3">
           {/* ✅ Remplace complètement le champ 'Filtrer...' */}
           <button
-            className="h-8 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+            className="h-8 px-3 rounded-md border border-red-600 bg-red-600 text-sm text-white flex items-center gap-2 hover:bg-red-700 hover:border-red-700 shadow-sm transition-all"
             onClick={() => setFilterOpen(true)}
           >
-            <FilterIcon className="h-4 w-4 text-slate-500" />
-            Filtres
+            <FilterIcon className="h-4 w-4 text-white" />
+            Cliquer & Filtrer les incidents
           </button>
 
           <button
@@ -332,6 +415,10 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
           setDraftRows([]);
         }}
         onApply={applyFilters}
+        // ✅ AJOUTS
+        appliedPayload={appliedPayload}
+        isQueryLoading={loading || authLoading}
+        totalCount={incidents.length}
       />
 
       {/* Table Container */}
@@ -367,6 +454,24 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
+                >
+                  Export PDF
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
+                >
+                  Option Incident
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
+                >
+                  Déclarant
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                 >
                   Description
@@ -376,6 +481,12 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                   className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32"
                 >
                   Statut
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28"
+                >
+                  Échéance
                 </th>
                 <th
                   scope="col"
@@ -421,6 +532,49 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                     {incident.reference}
                   </td>
 
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    <button
+                      onClick={(e) => handleExportPDF(e, incident)}
+                      disabled={downloadingId === incident.id}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
+                      title="Exporter en PDF"
+                    >
+                      {downloadingId === incident.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Génération...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-4 w-4 text-red-500" />
+                          <span>Export PDF</span>
+                        </>
+                      )}
+                    </button>
+                  </td>
+
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/incidents/${incident.id}`);
+                      }}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded transition-colors dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                      title="Option Incident"
+                    >
+                      <Info className="h-3.5 w-3.5" /> Modifier Incident
+                    </button>
+                  </td>
+
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    {incident.reporterName?.trim() ? (
+                      <span className="text-sm text-slate-700 dark:text-slate-300">
+                        {incident.reporterName}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-3">
                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                       {incident.title}
@@ -433,8 +587,12 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                     </div>
                   </td>
 
+
                   <td className="px-6 py-3 whitespace-nowrap">
                     <StatusBadge status={incident.status} />
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    {incident.dueDate ? new Date(incident.dueDate).toLocaleDateString("fr-FR") : "—"}
                   </td>
 
                   <td className="px-6 py-3 whitespace-nowrap">
@@ -499,6 +657,17 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                   <td className="px-6 py-3 whitespace-nowrap text-right text-xs">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/incidents/${incident.id}`);
+                        }}
+                        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded transition-colors dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                        title="Options incident"
+                      >
+                        <Info className="h-3.5 w-3.5" /> Options incident
+                      </button>
+
+                      <button
                         onClick={(e) => handleExportPDF(e, incident)}
                         disabled={downloadingId === incident.id}
                         className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
@@ -525,17 +694,16 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                         <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
                       </button>
 
-                      {incident.status !== "CLOSED" &&
-                        incident.status !== "CANCELLED" &&
-                        Number(user?.id) === Number(incident.reporterId) && (
-                          <button
-                            onClick={(e) => handleCloseIncident(e, incident)}
-                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
-                            title="Clôturer l'incident"
-                          >
-                            <CheckCircle className="h-3.5 w-3.5" /> Clôturer
-                          </button>
-                        )}
+                      {canCloseIncident(incident) && (
+                        <button
+                          //onClick={(e) => handleCloseIncident(e, incident)}
+                          onClick={(e) => openCloseModal(e, incident)}
+                          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                          title="Clôturer l'incident"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" /> Clôturer
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -557,21 +725,96 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAppliedQuery((q) => ({ ...q, page: Math.max(q.page - 1, 1) }))}
-            disabled={appliedQuery.page}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+            disabled={appliedQuery.page === 1}
+            className="h-8 px-3 rounded-md border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200
+                      hover:bg-slate-50 dark:hover:bg-slate-700
+                      disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ChevronLeft className="h-4 w-4" />
+            Précédent
           </button>
 
           <button
             onClick={() => setAppliedQuery((q) => ({ ...q, page: Math.min(q.page + 1, totalPages) }))}
             disabled={appliedQuery.page === totalPages}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="h-8 px-3 rounded-md border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200
+                      hover:bg-slate-50 dark:hover:bg-slate-700
+                      disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ChevronRight className="h-4 w-4" />
+            Suivant
           </button>
         </div>
       </div>
+
+      {closeModalOpen && closeTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => {
+            if (!closing) setCloseModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                  Clôturer l’incident
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {closeTarget.reference} — La clôture est définitive.
+                </p>
+              </div>
+              <button
+                className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                disabled={closing}
+                onClick={() => setCloseModalOpen(false)}
+                title="Fermer"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Commentaire de clôture <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={closeComment}
+                onChange={(e) => setCloseComment(e.target.value)}
+                rows={4}
+                className="mt-2 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="Ex: Incident résolu après redémarrage du service et vérification des logs."
+                disabled={closing}
+              />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Minimum 3 caractères.
+              </p>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                className="h-9 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200"
+                onClick={() => setCloseModalOpen(false)}
+                disabled={closing}
+              >
+                Annuler
+              </button>
+
+              <button
+                className="h-9 px-3 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                onClick={submitClose}
+                disabled={closing || closeComment.trim().length < 3}
+              >
+                {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                Confirmer la clôture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

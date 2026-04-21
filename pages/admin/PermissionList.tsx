@@ -20,9 +20,9 @@ export const PermissionList: React.FC = () => {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: number, name: string) => {
       if (window.confirm(`Êtes-vous sûr de vouloir supprimer la permission "${name}" ?`)) {
-          await api.deletePermission(Number(id));
+          await api.deletePermission(id);
           fetchItems();
       }
   };
