@@ -8,8 +8,11 @@ import { Dashboard } from "./pages/Dashboard";
 import { IncidentList } from "./pages/IncidentList";
 import { IncidentDetail } from "./pages/IncidentDetail";
 import { NewIncident } from "./pages/NewIncident";
+import { TicketGLPI } from "./pages/TicketGLPI";
 import { Login } from "./pages/Login";
 import { Pilotage } from "./pages/Pilotage";
+import { Statistiques } from "./pages/Statistiques";
+import { Reports } from "./pages/Reports";
 import { Settings } from "./pages/Settings";
 import { TaskList } from "./pages/TaskList";
 import { NewTask } from "./pages/NewTask";
@@ -65,7 +68,9 @@ const App: React.FC = () => {
           <Route path="/incidents/:id/edit" element={<NewIncident />} />
           <Route path="/incidents/:id/attachments" element={<IncidentAttachments />} />
 
-          <Route path="/tasks" element={<TaskList />} />
+          <Route path="/glpi-tickets" element={<TicketGLPI />} />
+
+                    <Route path="/tasks" element={<TaskList />} />
           <Route path="/incidents/:incidentId/tasks/new" element={<NewTask />} />
           <Route path="/incidents/:incidentId/tasks/:taskId/edit" element={<NewTask />} />
           <Route
@@ -73,9 +78,17 @@ const App: React.FC = () => {
             element={<TaskAttachments />}
           />
 
+          {/* Pilotage accessible à tout utilisateur connecté */}
+          <Route path="/pilotage" element={<Pilotage />} />
+
+          {/* Tableau statistique accessible à tout utilisateur connecté */}
+          <Route path="/statistiques" element={<Statistiques />} />
+
+          {/* Rapports hebdomadaires */}
+          <Route path="/reports" element={<Reports />} />
+
           {/* PROTÉGÉ + ADMIN */}
           <Route element={<RequireRole allowedRoles={["ADMIN"]} />}>
-            <Route path="/pilotage" element={<Pilotage />} />
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/sites" element={<SiteList />} />

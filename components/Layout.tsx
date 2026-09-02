@@ -15,7 +15,9 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  Archive
+  Archive,
+  Table2,
+  Ticket
 } from 'lucide-react';
 import { APP_NAME } from '../constants';
 import { Key } from 'lucide-react';
@@ -55,20 +57,16 @@ export const Layout: React.FC = () => {
   const isAdmin = roleNames.includes('ADMIN');
   const primaryRole = roleNames[0];
 
-  const navigation = [
+    const navigation = [
     { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
     { name: 'Incidents', href: '/incidents', icon: AlertCircle },
+    { name: 'Ticket GLPI', href: '/glpi-tickets', icon: Ticket },
     { name: 'Mes Tâches', href: '/tasks', icon: CheckSquare },
     { name: 'Mes Archives', href: '/archives', icon: Archive },
+    { name: 'Pilotage incident', href: '/pilotage', icon: PieChart },
+    { name: 'Tableau statistique', href: '/statistiques', icon: Table2 },
+    { name: 'Rapports hebdomadaire', href: '/reports', icon: BarChart2 },
   ];
-
-
-  if (isAdmin) {
-    navigation.push(
-      { name: 'Statistiques', href: '/stats', icon: BarChart2 },
-      { name: 'Tableau de pilotage', href: '/pilotage', icon: PieChart }
-    );
-  }
 
   const isActive = (path: string) => {
     if (path === '/' && location.pathname !== '/') return false;
@@ -316,10 +314,20 @@ export const Layout: React.FC = () => {
           {/* Breadcrumbs / Context - Left */}
           <div className="hidden lg:flex items-center text-sm text-slate-500 dark:text-slate-400">
              <span className="hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer transition-colors">Workspace</span>
-             <span className="mx-2 text-slate-300 dark:text-slate-700">/</span>
-             <span className="font-medium text-slate-900 dark:text-white capitalize">
-                {location.pathname === '/' ? 'Tableau de bord' : location.pathname.replace('/', '')}
-             </span>
+             {(() => {
+               const segments = location.pathname.split('/').filter(Boolean);
+               if (segments.length === 0) {
+                 return <><span className="mx-2 text-slate-300 dark:text-slate-700">/</span><span className="font-medium text-slate-900 dark:text-white">Tableau de bord</span></>;
+               }
+               return segments.map((seg, idx) => (
+                 <React.Fragment key={idx}>
+                   <span className="mx-2 text-slate-300 dark:text-slate-700">/</span>
+                   <span className="font-medium text-slate-900 dark:text-white capitalize">
+                     {/^\d+$/.test(seg) ? `#${seg}` : seg}
+                   </span>
+                 </React.Fragment>
+               ));
+             })()}
           </div>
 
           {/* Actions - Right */}
@@ -329,10 +337,11 @@ export const Layout: React.FC = () => {
              {/* Theme Toggle Button */}
              <button 
                 onClick={toggleTheme}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-medium"
                 title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
              >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                <span className="hidden sm:inline">{theme === 'dark' ? 'Mode clair' : 'Mode sombre'}</span>
              </button>
 
              <button className="relative text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 p-1.5 rounded-full transition-colors">

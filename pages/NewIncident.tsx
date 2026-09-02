@@ -40,7 +40,24 @@ export const NewIncident: React.FC = () => {
         personneIds: [] as number[],
         dueDate: '',
         attachments: [] as File[],
+        rootCause: '',
+        proposedSolution: '',
+        glpiUserIds: [] as number[], // ✅ Utilisateurs GLPI assignés
     });
+    // GLPI Users classic MultiSelect state
+    const [allGlpiUsers, setAllGlpiUsers] = useState<{ id: number; fullName: string; username?: string }[]>([]);
+    const [loadingGlpiUsers, setLoadingGlpiUsers] = useState(false);
+
+    // Fetch all GLPI users once (on mount)
+    useEffect(() => {
+        setLoadingGlpiUsers(true);
+        api.getGlpiUsers()
+            .then(users => {
+                setAllGlpiUsers(users);
+            })
+            .catch(() => setAllGlpiUsers([]))
+            .finally(() => setLoadingGlpiUsers(false));
+    }, []);
 
     const [sites, setSites] = useState<{ id: number; name: string }[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -55,70 +72,72 @@ export const NewIncident: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [
-                sitesResult,
-                responsibleSitesResult, // ✅ NEW
-                categoriesData,
-                subCategoriesData,
-                processesData,
-                subProcessData,
-                personnesData,
-            ] = await Promise.all([
-                api.getSites(1, 1000), // ⚠ on récupère un grand volume pour dropdown
-                api.getSitesByTypeId(RESPONSIBLE_TYPE_ID, 1, 1000), // ✅ NEW
-                api.getCategories(),
-                api.getSubCategories(),
-                api.getProcesses(),
-                api.getSubProcesses(),
-                api.getPersonnes(),
-            ]);
+            try {
+                const [
+                    sitesResult,
+                    responsibleSitesResult, // ✅ NEW
+                    categoriesData,
+                    subCategoriesData,
+                    processesData,
+                    subProcessData,
+                    personnesData,
+                ] = await Promise.all([
+                    api.getSites(1, 1000), // ⚠ on récupère un grand volume pour dropdown
+                    api.getSitesByTypeId(RESPONSIBLE_TYPE_ID, 1, 1000), // ✅ NEW
+                    api.getCategories(),
+                    api.getSubCategories(),
+                    api.getProcesses(),
+                    api.getSubProcesses(),
+                    api.getPersonnes(),
+                ]);
 
-            // 🔥 IMPORTANT : récupérer .data
-            setSites(sitesResult.data);
+                // 🔥 IMPORTANT : récupérer .data
+                setSites(sitesResult.data);
 
-            // ✅ NEW: liste filtrée côté backend
-            setResponsibleSites(responsibleSitesResult.data);
+                // ✅ NEW: liste filtrée côté backend
+                setResponsibleSites(responsibleSitesResult.data);
 
-            setCategories(categoriesData);
-            setPersonnes(personnesData);
+                setCategories(categoriesData);
+                setPersonnes(personnesData);
 
-            // ⚡ GLPI en arrière-plan, non bloquant
-            api.getGlpiTickets()
-                .then(data => setTickets(data))
-                .catch(() => setTickets([]));
+                // ⚡ GLPI en arrière-plan, non bloquant
+                api.getGlpiTickets()
+                    .then(data => setTickets(data))
+                    .catch(() => setTickets([]));
 
-            // 🔎 DEBUG
+                // 🔎 DEBUG
 
-            if (sitesResult.data.length === 0) {
-                console.error('Sites vides ! Vérifiez API /sites ou DB.');
-            }
-
-            // 🔴 GROUPING
-            const groupedSubCategories: Record<string, SubCategory[]> = {};
-            const groupedSubProcesses: Record<string, { id: string; name: string }[]> = {};
-
-            subCategoriesData.forEach(sc => {
-                if (!groupedSubCategories[sc.categoryId]) {
-                    groupedSubCategories[sc.categoryId] = [];
+                if (sitesResult.data.length === 0) {
+                    console.error('Sites vides ! Vérifiez API /sites ou DB.');
                 }
-                groupedSubCategories[sc.categoryId].push(sc);
-            });
 
-            subProcessData.forEach(sp => {
-                if (!groupedSubProcesses[sp.processId]) {
-                    groupedSubProcesses[sp.processId] = [];
-                }
-                groupedSubProcesses[sp.processId].push({
-                    id: sp.id,
-                    name: sp.name
+                // 🔴 GROUPING
+                const groupedSubCategories: Record<string, SubCategory[]> = {};
+                const groupedSubProcesses: Record<string, { id: string; name: string }[]> = {};
+
+                subCategoriesData.forEach(sc => {
+                    if (!groupedSubCategories[sc.categoryId]) {
+                        groupedSubCategories[sc.categoryId] = [];
+                    }
+                    groupedSubCategories[sc.categoryId].push(sc);
                 });
-            });
 
-            setSubCategories(groupedSubCategories);
-            setSubProcess(groupedSubProcesses);
-            setProcessDomains(processesData);
+                subProcessData.forEach(sp => {
+                    if (!groupedSubProcesses[sp.processId]) {
+                        groupedSubProcesses[sp.processId] = [];
+                    }
+                    groupedSubProcesses[sp.processId].push({
+                        id: sp.id,
+                        name: sp.name
+                    });
+                });
 
-            setRefsLoaded(true);
+                setSubCategories(groupedSubCategories);
+                setSubProcess(groupedSubProcesses);
+                setProcessDomains(processesData);
+            } finally {
+                setRefsLoaded(true);
+            }
         };
 
         fetchData();
@@ -154,7 +173,10 @@ export const NewIncident: React.FC = () => {
                     ? new Date(incident.dueDate).toISOString().slice(0, 10)
                     : '',
 
-                // ✅ ICI LA CORRECTION
+                // ✅ Correction premium : injection des champs
+                rootCause: incident.rootCause ?? '',
+                proposedSolution: incident.proposedSolution ?? '',
+
                 category: incident.categoryId ? String(incident.categoryId) : '',
                 subCategory: incident.subCategoryId ? String(incident.subCategoryId) : '',
 
@@ -171,6 +193,11 @@ export const NewIncident: React.FC = () => {
                 responsibleServices: [],
 
                 attachments: [],
+
+                // Pré-remplissage GLPI users
+                glpiUserIds: Array.isArray(incident.glpiUsers)
+                    ? incident.glpiUsers.map((u: any) => Number(u.id)).filter(Boolean)
+                    : [],
             }));
         };
 
@@ -200,6 +227,11 @@ export const NewIncident: React.FC = () => {
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
+                // Validation premium : description requise (>=5 caractères)
+                if (!formData.description || formData.description.trim().length < 5) {
+                    alert("La description doit contenir au moins 5 caractères pour être acceptée.");
+                    return;
+                }
         e.preventDefault();
 
         if (!formData.reporterName.trim()) {
@@ -248,6 +280,12 @@ export const NewIncident: React.FC = () => {
         const payload = new FormData();
 
         payload.append('reporterName', formData.reporterName.trim()); // ✅ AJOUT
+        if (formData.rootCause?.trim()) {
+            payload.append('rootCause', formData.rootCause.trim());
+        }
+        if (formData.proposedSolution?.trim()) {
+            payload.append('proposedSolution', formData.proposedSolution.trim());
+        }
 
         if (formData.glpiTicketId) {
             payload.append('glpiTicketId', String(formData.glpiTicketId));
@@ -286,6 +324,14 @@ export const NewIncident: React.FC = () => {
         formData.personneIds.forEach(id => {
             payload.append('personneIds', String(id));
         });
+
+
+        // GLPI Users assignés
+        if (formData.glpiUserIds && formData.glpiUserIds.length > 0) {
+            formData.glpiUserIds.forEach(id => {
+                payload.append('glpiUserIds', String(id));
+            });
+        }
 
         // 🔥 FICHIERS
         formData.attachments.forEach(file => {
@@ -332,8 +378,15 @@ export const NewIncident: React.FC = () => {
             {/* Top Bar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-20 transition-colors duration-200">
                 <div className="flex items-center gap-4">
-                    <button type="button" onClick={() => navigate(isEditMode ? `/incidents/${id}` : '/incidents')} className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <ArrowLeft className="h-5 w-5" />
+                    <button
+                        type="button"
+                        onClick={() => navigate(isEditMode ? `/incidents/${id}` : '/incidents')}
+                        className="inline-flex items-center gap-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md hover:-translate-x-0.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition-all"
+                        aria-label="Retour à la liste des incidents"
+                        title="Retour à la liste des incidents"
+                    >
+                        <ArrowLeft className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                        <span>Revenir à la liste des incidents</span>
                     </button>
                     <h1 className="text-lg font-semibold text-slate-900 dark:text-white">{isEditMode ? 'Modifier l\'incident' : 'Nouvel Incident'}</h1>
                 </div>
@@ -414,6 +467,7 @@ export const NewIncident: React.FC = () => {
                                 //onSearch={(q) => setTicketQuery(q)}   // ✅ AJOUT
                                 placeholder={tickets.length ? "Rechercher un ticket GLPI..." : "Aucun ticket chargé"}
                             />
+                            <div className="text-xs italic text-slate-400 mt-1">Veuillez choisir dans la liste</div>
                         </div>
                     </div>
                 </section>
@@ -442,6 +496,7 @@ export const NewIncident: React.FC = () => {
                                 }
                                 placeholder="Choisir les sites..."
                             />
+                            <div className="text-xs italic text-slate-400 mt-1">Veuillez choisir dans la liste</div>
 
 
                         </div>
@@ -485,27 +540,9 @@ export const NewIncident: React.FC = () => {
                                                 subCategory: ''
                                             }));
                                         }}
-                                        // onChange={(selectedName) => {
-                                        //     const selectedCategory = categories.find(c => c.name === selectedName);
-
-                                        //     setFormData(prev => {
-                                        //         const newCategoryId = selectedCategory ? String(selectedCategory.id) : '';
-
-                                        //         return {
-                                        //             ...prev,
-                                        //             category: newCategoryId,
-
-                                        //             // 🔥 reset SEULEMENT si la catégorie change réellement
-                                        //             subCategory:
-                                        //                 prev.category !== newCategoryId
-                                        //                     ? ''
-                                        //                     : prev.subCategory,
-                                        //         };
-                                        //     });
-                                        // }}
-
                                         placeholder="Rechercher une catégorie..."
                                     />
+                                    <div className="text-xs italic text-slate-400 mt-1">Veuillez choisir dans la liste</div>
 
                                 </div>
 
@@ -550,13 +587,13 @@ export const NewIncident: React.FC = () => {
                                             isOtherSubCategory: false
                                         }));
                                     }}
-
                                     placeholder={
                                         formData.category
                                             ? 'Rechercher une sous-catégorie...'
                                             : 'Sélectionner une catégorie d’abord'
                                     }
                                 />
+                                <div className="text-xs italic text-slate-400 mt-1">Veuillez choisir dans la liste</div>
                                 {/* <SearchSelect
                                     key={formData.category}   // 🔥 FORCE REMOUNT
                                     label="Sous-catégorie"
@@ -646,6 +683,7 @@ export const NewIncident: React.FC = () => {
                                     }));
                                 }}
                             />
+                            <div className="text-xs italic text-slate-400 mt-1">Veuillez choisir dans la liste</div>
 
                         </div>
                         <div>
@@ -668,6 +706,7 @@ export const NewIncident: React.FC = () => {
                                     }));
                                 }}
                             />
+                            <div className="text-xs italic text-slate-400 mt-1">Veuillez choisir dans la liste</div>
 
                         </div>
                     </div>
@@ -690,6 +729,28 @@ export const NewIncident: React.FC = () => {
                                 onChange={handleChange}
                                 className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                                 placeholder="Décrivez l'incident, les symptômes observés, les messages d'erreur..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cause racine (optionnel)</label>
+                            <textarea
+                                name="rootCause"
+                                rows={3}
+                                value={formData.rootCause}
+                                onChange={handleChange}
+                                className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                                placeholder="Décrivez la cause racine si connue..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Solution proposée (optionnel)</label>
+                            <textarea
+                                name="proposedSolution"
+                                rows={3}
+                                value={formData.proposedSolution}
+                                onChange={handleChange}
+                                className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                                placeholder="Décrivez une solution proposée si souhaité..."
                             />
                         </div>
                         <div>
@@ -793,6 +854,7 @@ export const NewIncident: React.FC = () => {
 
                             </div>
 
+
                             <div>
                                 <MultiSelect
                                     label="Personnes assignées"
@@ -810,6 +872,27 @@ export const NewIncident: React.FC = () => {
                                             : "Sélectionner un service d'abord"
                                     }
                                 />
+                            </div>
+
+                            {/* GLPI Users MultiSelect */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                    Utilisateur assigner
+                                </label>
+                                <MultiSelect
+                                    options={formData.siteIds.length > 0 ? allGlpiUsers.map(u => ({
+                                        label: u.fullName || u.username || `Utilisateur ${u.id}`,
+                                        value: u.id
+                                    })) : []}
+                                    selected={formData.glpiUserIds}
+                                    onChange={(values) => setFormData(prev => ({ ...prev, glpiUserIds: values as number[] }))}
+                                    placeholder={formData.siteIds.length > 0 ? (loadingGlpiUsers ? "Chargement..." : "Choisir un ou plusieurs utilisateurs...") : "Sélectionner un service d'abord"}
+                                    required={false}
+                                    label={undefined}
+                                />
+                                {formData.siteIds.length === 0 && (
+                                    <div className="text-xs italic text-slate-400 mt-1">Sélectionnez d'abord un service responsable</div>
+                                )}
                             </div>
 
                         </div>

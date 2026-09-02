@@ -1,9 +1,9 @@
-import { Incident, IncidentStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne, Type, RegisterAccountDTO } from '../types';
+import { Incident, IncidentStats, TrendDay, ServiceVolume, PriorityStats, OverdueStats, DailyActivity, CategoryProcessStats, User, Task, Site, Category, SubCategory, Process, SubProcess, Permission, Role, RolePermission, UpdateUserDTO, CreateUserDTO, Personne, Type, RegisterAccountDTO, WeeklyReportPeriod, WeeklyReportData } from '../types';
 import { MOCK_DELAY } from '../constants';
 import { IncidentAttachment } from '@/src/types/attachment';
 
-const API_BASE_URL = 'http://localhost:3002/api/v1';
-//const API_BASE_URL = "/api/incident";
+//const API_BASE_URL = 'http://localhost:3002/api/v1';
+const API_BASE_URL = "/api/incident";
 
 type AuthFailureHandler = () => void;
 
@@ -12,6 +12,25 @@ let refreshPromise: Promise<string | null> | null = null;
 
 export const registerAuthFailureHandler = (handler: AuthFailureHandler) => {
   authFailureHandler = handler;
+};
+
+/**
+ * Rouvre un incident archivé (CLOSED ou CANCELLED)
+ */
+export const reopenIncident = async (id: string | number) => {
+  const res = await apiFetch(`/incidents/${id}/reopen`, {
+    method: "PUT",
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    let message = 'Erreur lors de la réouverture de l’incident';
+    try {
+      const data = await res.json();
+      message = data?.message || message;
+    } catch {}
+    throw new Error(message);
+  }
+  return res.json();
 };
 
 
@@ -207,6 +226,7 @@ const getFreshAccessToken = async (): Promise<string | null> => {
 export const api = {
   // ...existing code...
   changeUserPassword,
+  reopenIncident,
 
   registerAccount: async (payload: RegisterAccountDTO): Promise<User> => {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -1511,7 +1531,7 @@ export const api = {
   },
 
 
-  getSimpleStats: async (): Promise<IncidentStats> => {
+    getSimpleStats: async (): Promise<IncidentStats> => {
     const response = await apiFetch('/incidents/stats/simple', {
       method: 'GET',
     });
@@ -1519,6 +1539,87 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error?.message || 'Erreur récupération stats');
+    }
+
+    return response.json();
+  },
+
+    getTrend: async (): Promise<TrendDay[]> => {
+    const response = await apiFetch('/incidents/stats/trend', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur récupération tendance');
+    }
+
+    return response.json();
+  },
+
+  getByService: async (): Promise<ServiceVolume[]> => {
+    const response = await apiFetch('/incidents/stats/by-service', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur récupération stats par service');
+    }
+
+    return response.json();
+  },
+
+  getByPriority: async (): Promise<PriorityStats> => {
+    const response = await apiFetch('/incidents/stats/priority', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur récupération stats par priorité');
+    }
+
+    return response.json();
+  },
+
+    getOverdue: async (): Promise<OverdueStats> => {
+    const response = await apiFetch('/incidents/stats/overdue', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur récupération stats retard');
+    }
+
+    return response.json();
+  },
+
+    getDailyActivity: async (): Promise<DailyActivity> => {
+    const response = await apiFetch('/incidents/stats/daily-activity', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur récupération activité journalière');
+    }
+
+    return response.json();
+  },
+
+    getCategoryProcessStats: async (dateFrom?: string): Promise<CategoryProcessStats> => {
+    const url = dateFrom
+      ? `/incidents/stats/by-category-process?dateFrom=${encodeURIComponent(dateFrom)}`
+      : '/incidents/stats/by-category-process';
+    const response = await apiFetch(url, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.message || 'Erreur récupération stats catégorie/processus');
     }
 
     return response.json();
@@ -1566,6 +1667,7 @@ export const api = {
     return json.data ?? [];
   },
 
+
   searchGlpiUsers: async (q: string, limit: number = 20) => {
     const qs = new URLSearchParams({
       q,
@@ -1582,6 +1684,41 @@ export const api = {
     }
 
     return response.json(); // { data: [...] }
+  },
+
+  /**
+   * Récupère tous les utilisateurs GLPI (pour MultiSelect classique)
+   */
+  getGlpiUsers: async () => {
+    const response = await apiFetch(`/glpi-users`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur chargement utilisateurs GLPI");
+    }
+
+    return response.json(); // tableau d'utilisateurs
+  },
+
+  /**
+   * Table serveur paginée/filtrée sur la table locale GLPITicket (sync GLPI)
+   * POST /glpi-tickets/query
+   */
+  queryGlpiTickets: async (payload: any) => {
+    const response = await apiFetch(`/glpi-tickets/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.message || "Erreur lors du chargement des tickets GLPI");
+    }
+
+    return response.json();
   },
 
   exportIncidentsPdf: async (payload: any) => {
@@ -1614,4 +1751,82 @@ export const api = {
     return response.blob();
   },
 
+  /* ─────────────────────────────────────────────── */
+  /*  Weekly Report API Methods                      */
+  /* ─────────────────────────────────────────────── */
+
+  getAvailableWeeks: async (): Promise<WeeklyReportPeriod[]> => {
+    const response = await apiFetch('/reports/weekly/available-weeks', {
+      method: 'GET',
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.message || 'Erreur récupération semaines');
+    }
+    return response.json();
+  },
+
+  getWeeklyReport: async (week?: string): Promise<WeeklyReportData> => {
+    const url = week
+      ? `/reports/weekly?week=${encodeURIComponent(week)}`
+      : '/reports/weekly/current';
+    const response = await apiFetch(url, { method: 'GET' });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.message || 'Erreur récupération rapport');
+    }
+    return response.json();
+  },
+
+  exportWeeklyReportPdf: async (week?: string): Promise<Blob> => {
+    const response = await apiFetch('/reports/weekly/export/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(week ? { week } : {}),
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(errText || 'Erreur export PDF rapport');
+    }
+    return response.blob();
+  },
+
+  exportWeeklyReportExcel: async (week?: string): Promise<Blob> => {
+    const response = await apiFetch('/reports/weekly/export/excel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(week ? { week } : {}),
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(errText || 'Erreur export Excel rapport');
+    }
+    return response.blob();
+  },
+
+  exportStatisticsPdf: async (payload: { dateFrom?: string; periodLabel?: string }): Promise<Blob> => {
+    const response = await apiFetch('/reports/statistics/export/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(errText || 'Erreur export PDF statistiques');
+    }
+    return response.blob();
+  },
+
+  exportPilotagePdf: async (payload: { dateFrom?: string; periodLabel?: string }): Promise<Blob> => {
+    const response = await apiFetch('/reports/pilotage/export/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(errText || 'Erreur export PDF pilotage');
+    }
+    return response.blob();
+  },
 };

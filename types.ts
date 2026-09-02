@@ -100,6 +100,10 @@ export interface Incident {
   serviceEmitter?: string | null;
   reporterName: string; // ✅ AJOUT
   glpiTicketId: number | null; // ✅ nouveau
+  rootCause?: string | null;
+  proposedSolution?: string | null;
+  // Premium: assigned GLPI users (array of GLPIUser objects)
+  glpiUsers?: any[];
 }
 
 export interface IncidentStats {
@@ -109,6 +113,43 @@ export interface IncidentStats {
   cancelled: number;
   byService: { name: string; value: number }[];
   byStatus: { name: string; value: number }[];
+  // Temps moyens (minutes) calculés côté backend ; null si aucune donnée disponible
+  avgTakeInChargeMinutes?: number | null;
+  avgResolutionMinutes?: number | null;
+}
+
+export interface TrendDay {
+  name: string;
+  ouverts: number;
+  resolus: number;
+}
+
+export interface ServiceVolume {
+  name: string;
+  value: number;
+}
+
+export interface PriorityStats {
+  byPriority: Array<{ name: string; value: number }>;
+  backlogCritical: number;
+}
+
+export interface OverdueStats {
+  count: number;
+}
+
+export interface DailyActivity {
+  createdToday: number;
+  takenInChargeToday: number;
+  resolvedToday: number;
+  urgentActive: number;
+}
+
+export interface CategoryProcessStats {
+  categories: Array<{ name: string; total: number; open: number; inProgress: number; closed: number; cancelled: number }>;
+  subCategories: Array<{ name: string; categoryName: string; total: number }>;
+  processes: Array<{ name: string; total: number }>;
+  subProcesses: Array<{ name: string; processName: string; total: number }>;
 }
 
 // Task Types
@@ -224,6 +265,82 @@ export type UpdatePersonneDTO = Partial<{
   fullname: string;
 }>;
 
+
+/* ─────────────────────────────────────────────── */
+/*  Weekly Report Types                           */
+/* ─────────────────────────────────────────────── */
+
+export interface WeeklyReportPeriod {
+  weekNumber: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  label: string;
+}
+
+export interface WeeklyReportKpi {
+  created: number;
+  resolved: number;
+  resolutionRate: number | null;
+  cappedRate: number;
+  extraResolvedFromStock: number;
+  backlogStart: number;
+  backlogEnd: number;
+  avgResolutionHours: number | null;
+  avgTakeInChargeHours: number | null;
+}
+
+export interface WeeklyReportComparison {
+  previousWeek: WeeklyReportKpi;
+  resolutionRateChange: number | null;
+  createdChange: number | null;
+  resolvedChange: number | null;
+  backlogEndChange: number | null;
+  avgResolutionChange: number | null;
+}
+
+export interface WeeklyReportByPriority {
+  name: string;
+  created: number;
+  resolved: number;
+  rate: number | null;
+}
+
+export interface WeeklyReportByService {
+  name: string;
+  created: number;
+  resolved: number;
+  rate: number | null;
+}
+
+export interface WeeklyReportTrendDay {
+  dayLabel: string;
+  date: string;
+  created: number;
+  resolved: number;
+}
+
+export interface WeeklyReportData {
+  period: WeeklyReportPeriod;
+  kpi: WeeklyReportKpi;
+  byPriority: WeeklyReportByPriority[];
+  byService: WeeklyReportByService[];
+  dailyTrend: WeeklyReportTrendDay[];
+  comparison: WeeklyReportComparison | null;
+  incidents: WeeklyReportIncidentDetail[];
+}
+
+export interface WeeklyReportIncidentDetail {
+  reference: string;
+  description: string;
+  status: string;
+  priority: string;
+  serviceEmetteur: string;
+  serviceRecepteur: string;
+  createdAt: string;
+  rootCause: string | null;
+  proposedSolution: string | null;
+}
 
 export interface Type {
   id: number;

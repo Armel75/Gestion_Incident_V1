@@ -5,6 +5,12 @@ import { Plus, FileText, FileSpreadsheet, Loader2 } from "lucide-react";
 import { INCIDENT_FILTER_COLUMNS, OPERATORS_BY_TYPE } from "../../constants/incidentFilterColumns";
 import type { QueryPayload } from "./serialize";
 import { api } from "@/services/api";
+import ExcelJS from "exceljs";
+import {
+  EXCEL_STYLE,
+  addExcelSection,
+  downloadWorkbook,
+} from "../../utils/excelReport";
 
 const makeId = (): string => {
   // 1) si dispo (HTTPS / localhost / navigateurs récents)
@@ -94,24 +100,136 @@ export const FilterPanel: React.FC<Props> = ({
     try {
       setExporting(format);
 
-      // ✅ log pour vérifier que c’est bien le payload appliqué
-      console.log("[EXPORT payload]", appliedPayload);
-
       const date = new Date().toISOString().slice(0, 10);
 
-      // ⚠️ IMPORTANT:
-      // - si ton backend renvoie CSV => extension .csv
-      // - si tu renvoies un vrai XLSX => mets .xlsx
-      // Ici je pars sur CSV (le plus probable sans librairie Excel).
-      const filename =
-        format === "pdf" ? `incidents_${date}.pdf` : `incidents_${date}.csv`;
+      // ── PDF : le backend génère directement le PDF ──
+      if (format === "pdf") {
+        const blob = await (api as any).exportIncidentsPdf(appliedPayload);
+        downloadBlob(blob, `incidents_${date}.pdf`);
+        return;
+      }
 
-      const blob =
-        format === "pdf"
-          ? await (api as any).exportIncidentsPdf(appliedPayload)
-          : await (api as any).exportIncidentsExcel(appliedPayload);
+      // ── Excel : on récupère les incidents filtrés en JSON, puis on génère un .xlsx stylisé ──
+      // Le backend limite pageSize à 100 → on pagine pour tout récupérer (plafond 10 000).
+      const PAGE_SIZE = 100;
+      const MAX_PAGES = 100;
+      let incidents: any[] = [];
+      let total = 0;
+      let page = 1;
+      do {
+        const result = await api.queryIncidents({
+          ...appliedPayload,
+          page,
+          pageSize: PAGE_SIZE,
+        });
+        const data: any[] = Array.isArray(result?.data) ? result.data : [];
+        incidents = incidents.concat(data);
+        total = Number(result?.total ?? incidents.length);
+        page++;
+      } while (incidents.length < total && page <= MAX_PAGES);
 
-      downloadBlob(blob, filename);
+      const fmtDate = (d?: any) =>
+        d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+      const sitesList = (list?: any[]) =>
+        Array.isArray(list) && list.length
+          ? list.map((s: any) => s?.name ?? s?.site?.name).filter(Boolean).join(", ")
+          : "—";
+
+      // Synthèse calculée côté client (statuts Ouverts/En cours fusionnés)
+      const counts = incidents.reduce(
+        (acc, inc) => {
+          const s = String(inc.status || "").toUpperCase();
+          if (s === "OPEN" || s === "IN_PROGRESS") acc.enCours++;
+          else if (s === "CLOSED" || s === "RESOLVED") acc.resolus++;
+          else if (s === "CANCELLED") acc.annules++;
+          if (String(inc.criticality || "") === "Critique") acc.critiques++;
+          return acc;
+        },
+        { enCours: 0, resolus: 0, annules: 0, critiques: 0 }
+      );
+
+      const workbook = new ExcelJS.Workbook();
+
+      // Feuille « Incidents » (en premier)
+      const wsIncidents = workbook.addWorksheet("Incidents");
+      wsIncidents.properties.tabColor = { argb: "FF1E3A8A" };
+      addExcelSection(
+        wsIncidents,
+        "Liste des incidents filtrés",
+        [
+          "Référence",
+          "Ticket GLPI",
+          "Description",
+          "Catégorie",
+          "Sous-catégorie",
+          "Statut",
+          "Criticité",
+          "Urgence",
+          "Déclarant",
+          "Service émetteur",
+          "Site traitant",
+          "Site de l'incident",
+          "Créé le",
+          "Échéance",
+          "Cause racine",
+          "Solution proposée",
+        ],
+        incidents.map((inc) => [
+          inc.reference ?? "",
+          inc.glpiTicketId ? String(inc.glpiTicketId) : "—",
+          inc.description ?? "",
+          inc.category ?? "",
+          inc.subCategory ?? "",
+          inc.status ?? "",
+          inc.criticality ?? "",
+          inc.urgency ?? "",
+          inc.reporterName ?? "",
+          inc.serviceEmitter ?? "",
+          sitesList(inc.sites),
+          sitesList(inc.impactedSites),
+          fmtDate(inc.createdAt),
+          fmtDate(inc.dueDate),
+          inc.rootCause ?? "—",
+          inc.proposedSolution ?? "—",
+        ]),
+        {
+          widths: [18, 12, 40, 22, 22, 12, 12, 12, 22, 26, 26, 26, 12, 12, 30, 30],
+        }
+      );
+
+      // Feuille « Résumé »
+      const wsSummary = workbook.addWorksheet("Résumé");
+      wsSummary.properties.tabColor = { argb: "FF1E3A8A" };
+      wsSummary.columns = [{ width: 36 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }];
+
+      const titleRow = wsSummary.addRow(["Export des incidents filtrés"]);
+      wsSummary.mergeCells(1, 1, 1, 6);
+      titleRow.getCell(1).font = { bold: true, size: 16, color: { argb: EXCEL_STYLE.TITLE_COLOR } };
+      titleRow.height = 26;
+
+      const metaRow = wsSummary.addRow([
+        `Généré le ${new Date().toLocaleString("fr-FR")} · Logique : ${appliedPayload.logic === "AND" ? "ET" : "OU"} · Total : ${total} incident(s)`,
+      ]);
+      wsSummary.mergeCells(2, 1, 2, 6);
+      metaRow.getCell(1).font = { size: 10, color: { argb: EXCEL_STYLE.MUTED_COLOR } };
+
+      wsSummary.addRow([]);
+
+      addExcelSection(
+        wsSummary,
+        "Synthèse",
+        ["Indicateur", "Valeur"],
+        [
+          ["Total incidents", total],
+          ["En cours (ouverts + en cours)", counts.enCours],
+          ["Résolus", counts.resolus],
+          ["Annulés", counts.annules],
+          ["Dont critiques", counts.critiques],
+        ],
+        { numberCols: [2], mergeTo: 6 }
+      );
+
+      await downloadWorkbook(workbook, `incidents_${date}.xlsx`);
     } catch (e: any) {
       console.error(e);
       alert(e?.message || `Erreur export ${format.toUpperCase()}`);
@@ -218,7 +336,7 @@ export const FilterPanel: React.FC<Props> = ({
               Télécharger PDF
             </button>
 
-            {/* ✅ Export EXCEL (CSV) */}
+            {/* ✅ Export EXCEL (.xlsx stylisé) */}
             <button
               type="button"
               disabled={!exportEnabled}

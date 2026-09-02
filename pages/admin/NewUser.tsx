@@ -26,8 +26,10 @@ export const NewUser: React.FC = () => {
     roleIds: [] as number[],
     siteId: null as number | null,
     isActive: true,
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -52,7 +54,8 @@ export const NewUser: React.FC = () => {
             roleIds: item.roles ? item.roles.map(role => role.id) : [],
             siteId: item.siteId ?? null,
             isActive: item.isActive,
-            password: ''
+            password: '',
+            confirmPassword: ''
           });
         }
       }
@@ -66,6 +69,7 @@ export const NewUser: React.FC = () => {
         ...prev, 
         [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value 
     }));
+    if (name === 'confirmPassword') setConfirmPasswordError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,15 +77,49 @@ export const NewUser: React.FC = () => {
     setMatriculeError(null);
     setEmailError(null);
     setUsernameError(null);
-          // Vérification unicité du username (hors édition du même user)
-          if (formData.username) {
-            const existsUsername = allUsers.some(u => u.username && u.username === formData.username && (!isEditMode || u.id !== Number(id)));
-            if (existsUsername) {
-              setUsernameError('Ce nom d\'utilisateur existe déjà. Veuillez en saisir un autre.');
-              setLoading(false);
-              return;
-            }
-          }
+    setConfirmPasswordError(null);
+
+    // Vérification unicité du username (hors édition du même user)
+    if (formData.username) {
+      const existsUsername = allUsers.some(u => u.username && u.username === formData.username && (!isEditMode || u.id !== Number(id)));
+      if (existsUsername) {
+        setUsernameError("Ce nom d'utilisateur existe déjà. Veuillez en saisir un autre.");
+        setLoading(false);
+        return;
+      }
+    }
+
+
+    // Vérification du format du matricule : 2 lettres majuscules + chiffres
+    const matriculeRegex = /^[A-Z]{2}\d+$/;
+    if (!matriculeRegex.test(formData.matricule)) {
+      setMatriculeError("Le matricule doit contenir 2 lettres majuscules suivies de chiffres, sans espace ni caractère spécial. Exemple : DL457454");
+      setLoading(false);
+      return;
+    }
+
+    // Vérification du format de l'email
+    const emailRegex = /^[^\s@]+@(?:[^\s@]+\.)*groupesorepco\.com$/;
+    if (!emailRegex.test(formData.email.trim().toLowerCase())) {
+      setEmailError("L'email doit appartenir au domaine groupesorepco.com (ex: info@sous_domaine.groupesorepco.com)");
+      setLoading(false);
+      return;
+    }
+
+    // Vérification mot de passe >= 6 caractères
+    if (!isEditMode && (!formData.password || formData.password.length < 6)) {
+      setConfirmPasswordError("Le mot de passe doit contenir au moins 6 caractères.");
+      setLoading(false);
+      return;
+    }
+
+    // Vérification confirmation mot de passe
+    if (!isEditMode && formData.password !== formData.confirmPassword) {
+      setConfirmPasswordError("Les mots de passe ne correspondent pas.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       // Vérification unicité du matricule (hors édition du même user)
@@ -135,7 +173,7 @@ export const NewUser: React.FC = () => {
         }
         await api.createUser(createPayload);
       }
-      navigate('/settings/users');
+      navigate('/settings/users?page=1');
     } catch (error) {
       console.error(error);
       setLoading(false);
@@ -187,6 +225,7 @@ export const NewUser: React.FC = () => {
                         required
                         value={formData.username}
                         onChange={handleChange}
+                        placeholder="ex: jdupont"
                         className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                       />
                       {usernameError && <div className="text-red-500 text-xs mt-1">{usernameError}</div>}
@@ -199,6 +238,7 @@ export const NewUser: React.FC = () => {
                           name="email"
                           value={formData.email}
                           onChange={handleChange}
+                          placeholder="ex: utilisateur@groupesorepco.com"
                           className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                         />
                         {emailError && <div className="text-red-500 text-xs mt-1">{emailError}</div>}
@@ -211,6 +251,7 @@ export const NewUser: React.FC = () => {
                           name="matricule"
                           value={formData.matricule}
                           onChange={handleChange}
+                          placeholder="ex: DL7454"
                           className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                         />
                         {matriculeError && <div className="text-red-500 text-xs mt-1">{matriculeError}</div>}
@@ -223,6 +264,7 @@ export const NewUser: React.FC = () => {
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
+                        placeholder="ex: Jean"
                         className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                       />
                   </div>
@@ -234,6 +276,7 @@ export const NewUser: React.FC = () => {
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
+                        placeholder="ex: Dupont"
                         className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                       />
                   </div>
@@ -293,9 +336,27 @@ export const NewUser: React.FC = () => {
                         required={!isEditMode}
                         value={formData.password}
                         onChange={handleChange}
+                        placeholder={isEditMode ? "Laisser vide pour ne pas changer" : "Mot de passe sécurisé"}
                         className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
                       />
                   </div>
+                  {!isEditMode && (
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Confirmer le mot de passe <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Retapez le mot de passe"
+                        className="block w-full rounded-md border-0 py-2 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:bg-slate-800 sm:text-sm sm:leading-6"
+                      />
+                      {confirmPasswordError && <div className="text-red-500 text-xs mt-1">{confirmPasswordError}</div>}
+                    </div>
+                  )}
                    <div className="relative flex items-start pt-2">
                     <div className="flex h-6 items-center">
                       <input

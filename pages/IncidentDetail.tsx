@@ -22,6 +22,26 @@ export const IncidentDetail: React.FC = () => {
     const [glpiTicketContent, setGlpiTicketContent] = useState<string>("");
     const [comments, setComments] = useState<any[]>([]);
 
+    // --- Ajout logique bouton rouvrir ---
+    const [reopenLoading, setReopenLoading] = useState(false);
+    const canReopenIncident = incident && (incident.status === 'CLOSED' || incident.status === 'CANCELLED');
+    const handleReopenIncident = async () => {
+        if (!incident) return;
+        if (!window.confirm("Voulez-vous vraiment rouvrir cet incident ?")) return;
+        setReopenLoading(true);
+        try {
+            // @ts-ignore
+            await api.reopenIncident(incident.id);
+            // Recharge l’incident
+            const updated = await api.getIncidentById(incident.id);
+            setIncident(updated);
+        } catch (e: any) {
+            alert(e?.message || "Erreur lors de la réouverture de l’incident.");
+        } finally {
+            setReopenLoading(false);
+        }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             if (id) {
@@ -484,12 +504,12 @@ export const IncidentDetail: React.FC = () => {
                     <button
                         type="button"
                         onClick={handleBack}
-                        className="inline-flex items-center gap-2 rounded-md border border-brand-600 bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 hover:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition-colors"
+                        className="inline-flex items-center gap-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md hover:-translate-x-0.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition-all"
                         aria-label="Retour à la liste des incidents"
                         title="Retour à la liste des incidents"
                     >
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="hidden sm:inline">Retour aux incidents</span>
+                        <ArrowLeft className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                        <span>Revenir à la liste des incidents</span>
                     </button>
 
                     <div className="flex items-center text-sm">
@@ -499,6 +519,27 @@ export const IncidentDetail: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {canReopenIncident && (
+                        <button
+                            onClick={handleReopenIncident}
+                            disabled={reopenLoading}
+                            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-700 dark:text-blue-200 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-600 rounded-md hover:bg-blue-50 dark:hover:bg-blue-700 hover:text-blue-900 dark:hover:text-blue-400 transition-all shadow-sm"
+                            aria-label="Rouvrir l’incident"
+                            title="Rouvrir l’incident"
+                        >
+                            {reopenLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Restauration...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Plus className="h-4 w-4 text-blue-500" />
+                                    <span>Rouvrir l’incident</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                     <button
                         onClick={(e) => handleExportPDF(e, incident)}
                         disabled={downloadingId === incident.id}
@@ -561,6 +602,7 @@ export const IncidentDetail: React.FC = () => {
                         </div>
 
                         {activeTab === 'details' ? (
+
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div>
                                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Description</h3>
@@ -568,6 +610,38 @@ export const IncidentDetail: React.FC = () => {
                                         {incident.description}
                                     </div>
                                 </div>
+
+                                {/* PREMIUM: Utilisateurs GLPI assignés */}
+                                {Array.isArray((incident as any).glpiUsers) && (incident as any).glpiUsers.length > 0 && (
+                                  <div>
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Utilisateurs GLPI assignés</h3>
+                                    <ul className="flex flex-wrap gap-2">
+                                      {(incident as any).glpiUsers.map((user: any) => (
+                                        <li key={user.id} className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded text-xs font-medium text-slate-700 dark:text-slate-200">
+                                          {user.fullName || user.firstname + ' ' + user.realname || user.login || user.email || `Utilisateur #${user.id}`}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {incident.rootCause && (
+                                    <div>
+                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Cause racine</h3>
+                                        <div className="prose prose-slate dark:prose-invert prose-sm max-w-none text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            {incident.rootCause}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {incident.proposedSolution && (
+                                    <div>
+                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Solution proposée</h3>
+                                        <div className="prose prose-slate dark:prose-invert prose-sm max-w-none text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            {incident.proposedSolution}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <div className="flex items-center justify-between mb-3">

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
 import { Incident } from "../types";
@@ -13,6 +14,10 @@ import {
   Loader2,
   Info,
   Filter as FilterIcon,
+  PieChart,
+  BarChart2,
+  ChevronRight,
+  Ticket,
 } from "lucide-react";
 import { useAuth } from "../src/types/auth/AuthContext";
 
@@ -32,6 +37,24 @@ type AppliedQuery = {
 };
 
 export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode = "normal" }) => {
+    // --- Ajout bouton rouvrir incident pour archives ---
+    const [reopenLoadingId, setReopenLoadingId] = useState<string | null>(null);
+    const canReopenIncident = (incident: any) =>
+      mode === "archives" && (incident.status === "CLOSED" || incident.status === "CANCELLED");
+
+    const handleReopenIncident = async (e: React.MouseEvent, incident: any) => {
+      e.stopPropagation();
+      if (!window.confirm("Voulez-vous vraiment rouvrir cet incident ?")) return;
+      setReopenLoadingId(incident.id);
+      try {
+        await api.reopenIncident(incident.id);
+        await fetchIncidents(appliedQuery);
+      } catch (err: any) {
+        alert(err?.message || "Erreur lors de la réouverture de l’incident.");
+      } finally {
+        setReopenLoadingId(null);
+      }
+    };
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [appliedPayload, setAppliedPayload] = useState<QueryPayload | null>(null);
@@ -165,7 +188,6 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
 
       const mappedData = result.data.map((inc: any) => ({
         ...inc,
-        reference: `INC-${new Date(inc.createdAt).getFullYear()}-${String(inc.id).padStart(3, "0")}`,
         title: inc.description,
         priority: inc.urgency,
         service: "",
@@ -255,9 +277,11 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
     const rows = [
       [
         "Nom du déclarant",
-        "Ticket GLPI", // ✅ AJOUT
+        "Ticket GLPI",
         "Référence",
         "Description",
+        "Cause racine",
+        "Solution proposée",
         "Statut",
         "Priorité",
         "Service émetteur",
@@ -266,10 +290,12 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
         "Échéance",
       ],
       [
-        incident.reporterName ?? "", // ✅ déclarant corrigé
-        glpiTicketNumber, // ✅ Ticket GLPI
+        incident.reporterName ?? "",
+        glpiTicketNumber,
         incident.reference,
         incident.description,
+        incident.rootCause ?? "",
+        incident.proposedSolution ?? "",
         incident.status,
         incident.urgency,
         incident.serviceEmitter ?? "",
@@ -333,8 +359,10 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
 
   // ✅ Si jamais tu veux afficher des incidents même en fallback, on garde incidents tel quel
   const displayedIncidents = useMemo(() => incidents, [incidents]);
+
+  // Correction : supporte roles sous forme de string[] ou d'objets { name }
   const userRoles: string[] = Array.isArray((user as any)?.roles)
-    ? ((user as any).roles as string[])
+    ? ((user as any).roles as any[]).map((r) => typeof r === "string" ? r : r.name)
     : (user as any)?.role
       ? [String((user as any).role)]
       : [];
@@ -352,52 +380,112 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900 transition-colors duration-200">
+    <div className="flex h-[calc(100vh-3.5rem)] min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900 transition-colors duration-200">
       {/* Action Bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10 transition-colors duration-200">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight">
-            Incidents
-          </h1>
-          <div
-            className="hidden sm:flex items-center gap-2 rounded-md px-2 py-1 text-sm
-                          text-slate-500 dark:text-slate-400
-                          bg-slate-50 dark:bg-slate-800/60
-                          border border-slate-200 dark:border-slate-700"
-          >
-            <Info className="h-3.5 w-3.5" />
-            <span>Cliquez n'importe où sur une ligne pour voir les détails de l'incident</span>
+      <div className="flex flex-col px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10 transition-colors duration-200">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight">
+              Incidents
+            </h1>
+            {filtersActive && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-900/50 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10">
+                Filtres actifs
+                <button
+                  onClick={clearFilter}
+                  className="text-brand-600 hover:text-brand-900 dark:hover:text-white"
+                  title="Effacer les filtres"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
           </div>
-          {filtersActive && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-900/50 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10">
-              Filtres actifs
-              <button
-                onClick={clearFilter}
-                className="text-brand-600 hover:text-brand-900 dark:hover:text-white"
-                title="Effacer les filtres"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* ✅ Remplace complètement le champ 'Filtrer...' */}
-          <button
-            className="h-8 px-3 rounded-md border border-red-600 bg-red-600 text-sm text-white flex items-center gap-2 hover:bg-red-700 hover:border-red-700 shadow-sm transition-all"
-            onClick={() => setFilterOpen(true)}
-          >
-            <FilterIcon className="h-4 w-4 text-white" />
-            Cliquer & Filtrer les incidents
-          </button>
 
           <button
             className="h-8 pl-2 pr-3 bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 dark:hover:bg-brand-500 text-white rounded-md text-sm font-medium flex items-center gap-1.5 shadow-sm transition-all"
             onClick={() => navigate("/incidents/new")}
           >
             <Plus className="h-4 w-4" />
-            Nouveau
+            Nouvel Incident
+          </button>
+        </div>
+
+        <div className="flex items-stretch gap-3">
+          {/* Navigation Pilotage */}
+          <button
+            className="group flex-1 flex flex-col items-start gap-0.5 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200 border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:shadow-md"
+            onClick={() => navigate("/pilotage")}
+          >
+            <div className="flex items-center gap-2 w-full">
+              <PieChart className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
+              <span className="text-sm font-semibold">Pilotage des incidents</span>
+              <ChevronRight className="h-4 w-4 text-amber-400/60 ml-auto group-hover:text-amber-600 dark:group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all" />
+            </div>
+            <span className="text-[11px] font-medium text-amber-600/70 dark:text-amber-400/70 ml-7">
+              Piloter les catégories et les processus, et suivre les signaux de risque de vos incidents
+            </span>
+            <div className="mt-1.5 ml-7 w-[calc(100%-28px)] rounded-lg bg-amber-500 dark:bg-amber-600 border border-amber-600 dark:border-amber-700 px-2.5 py-1.5 text-xs font-semibold text-white flex items-center justify-between gap-1.5 group-hover:bg-amber-600 dark:group-hover:bg-amber-700 group-hover:border-amber-700 dark:group-hover:border-amber-800 transition-all duration-200">
+              <span>Cliquer pour voir</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+            </div>
+          </button>
+
+          {/* Navigation Rapports */}
+          <button
+            className="group flex-1 flex flex-col items-start gap-0.5 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200 border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-md"
+            onClick={() => navigate("/reports")}
+          >
+            <div className="flex items-center gap-2 w-full">
+              <BarChart2 className="h-5 w-5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
+              <span className="text-sm font-semibold">Rapports hebdomadaires</span>
+              <ChevronRight className="h-4 w-4 text-emerald-400/60 ml-auto group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
+            </div>
+            <span className="text-[11px] font-medium text-emerald-600/70 dark:text-emerald-400/70 ml-7">
+              Consulter et générer un rapport hebdomadaire de vos incidents
+            </span>
+            <div className="mt-1.5 ml-7 w-[calc(100%-28px)] rounded-lg bg-emerald-500 dark:bg-emerald-600 border border-emerald-600 dark:border-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white flex items-center justify-between gap-1.5 group-hover:bg-emerald-600 dark:group-hover:bg-emerald-700 group-hover:border-emerald-700 dark:group-hover:border-emerald-800 transition-all duration-200">
+              <span>Cliquer pour voir</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+            </div>
+          </button>
+
+          {/* Filtre */}
+          <button
+            className="group flex-1 flex flex-col items-start gap-0.5 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200 border-sky-200 dark:border-sky-900/50 bg-sky-50 dark:bg-sky-950/20 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-950/40 hover:shadow-md"
+            onClick={() => setFilterOpen(true)}
+          >
+            <div className="flex items-center gap-2 w-full">
+              <FilterIcon className="h-5 w-5 text-sky-500 dark:text-sky-400 flex-shrink-0" />
+              <span className="text-sm font-semibold">Cliquer &amp; Filtrer les incidents</span>
+              <ChevronRight className="h-4 w-4 text-sky-400/60 ml-auto group-hover:text-sky-600 dark:group-hover:text-sky-300 group-hover:translate-x-0.5 transition-all" />
+            </div>
+            <span className="text-[11px] font-medium text-sky-600/70 dark:text-sky-400/70 ml-7">
+              Filtrer et rechercher des incidents par critères avancés
+            </span>
+            <div className="mt-1.5 ml-7 w-[calc(100%-28px)] rounded-lg bg-sky-500 dark:bg-sky-600 border border-sky-600 dark:border-sky-700 px-2.5 py-1.5 text-xs font-semibold text-white flex items-center justify-between gap-1.5 group-hover:bg-sky-600 dark:group-hover:bg-sky-700 group-hover:border-sky-700 dark:group-hover:border-sky-800 transition-all duration-200">
+              <span>Cliquer pour filtrer</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+            </div>
+          </button>
+
+          {/* Navigation Tickets GLPI */}
+          <button
+            className="group flex-1 flex flex-col items-start gap-0.5 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200 border-violet-200 dark:border-violet-900/50 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/40 hover:shadow-md"
+            onClick={() => navigate("/glpi-tickets")}
+          >
+            <div className="flex items-center gap-2 w-full">
+              <Ticket className="h-5 w-5 text-violet-500 dark:text-violet-400 flex-shrink-0" />
+              <span className="text-sm font-semibold">Tickets GLPI</span>
+              <ChevronRight className="h-4 w-4 text-violet-400/60 ml-auto group-hover:text-violet-600 dark:group-hover:text-violet-300 group-hover:translate-x-0.5 transition-all" />
+            </div>
+            <span className="text-[11px] font-medium text-violet-600/70 dark:text-violet-400/70 ml-7">
+              Consulter et filtrer les tickets GLPI ouverts synchronisés
+            </span>
+            <div className="mt-1.5 ml-7 w-[calc(100%-28px)] rounded-lg bg-violet-500 dark:bg-violet-600 border border-violet-600 dark:border-violet-700 px-2.5 py-1.5 text-xs font-semibold text-white flex items-center justify-between gap-1.5 group-hover:bg-violet-600 dark:group-hover:bg-violet-700 group-hover:border-violet-700 dark:group-hover:border-violet-800 transition-all duration-200">
+              <span>Cliquer pour voir</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+            </div>
           </button>
         </div>
       </div>
@@ -422,7 +510,7 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
       />
 
       {/* Table Container */}
-      <div className="flex-1 overflow-auto bg-white dark:bg-slate-900">
+      <div className="min-h-0 flex-1 overflow-auto bg-white dark:bg-slate-900">
         {loading || authLoading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-800 dark:border-slate-400"></div>
@@ -462,7 +550,25 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
                 >
+                  Cloture incident
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
+                >
+                  Rouvrir l'incident
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
+                >
                   Option Incident
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40"
+                >
+                  Details Incident
                 </th>
                 <th
                   scope="col"
@@ -475,6 +581,18 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                   className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                 >
                   Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Cause racine
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Solution proposée
                 </th>
                 <th
                   scope="col"
@@ -552,6 +670,40 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                       )}
                     </button>
                   </td>
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    {canCloseIncident(incident) && (
+                      <button
+                        onClick={(e) => openCloseModal(e, incident)}
+                        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                        title="Clôturer l'incident"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" /> Clôturer
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    {canReopenIncident(incident) && (
+                      <button
+                        onClick={(e) => handleReopenIncident(e, incident)}
+                        disabled={reopenLoadingId === incident.id}
+                        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                        aria-label="Rouvrir l’incident"
+                        title="Rouvrir l’incident"
+                      >
+                        {reopenLoadingId === incident.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Restauration...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 text-blue-500" />
+                            <span>Rouvrir l’incident</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </td>
 
                   <td className="px-6 py-3 whitespace-nowrap">
                     <button
@@ -563,6 +715,18 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                       title="Option Incident"
                     >
                       <Info className="h-3.5 w-3.5" /> Modifier Incident
+                    </button>
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/incidents/${incident.id}`);
+                      }}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                      title="Détails Incident"
+                    >
+                      <Info className="h-3.5 w-3.5" /> Details Incident
                     </button>
                   </td>
 
@@ -585,6 +749,20 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                         day: "numeric",
                       })}
                     </div>
+                  </td>
+                  <td className="px-6 py-3">
+                    {incident.rootCause?.trim() ? (
+                      <span className="text-xs text-slate-700 dark:text-slate-200">{incident.rootCause}</span>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">—</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-3">
+                    {incident.proposedSolution?.trim() ? (
+                      <span className="text-xs text-slate-700 dark:text-slate-200">{incident.proposedSolution}</span>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">—</span>
+                    )}
                   </td>
 
 
@@ -636,15 +814,25 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                   </td>
 
                   <td className="px-6 py-3 whitespace-nowrap hidden md:table-cell">
-                    {incident.personnes && incident.personnes.length > 0 ? (
+                    {(incident.personnes && incident.personnes.length > 0) || (incident.glpiUsers && incident.glpiUsers.length > 0) ? (
                       <div className="flex flex-wrap gap-2">
-                        {incident.personnes.map((personne: any) => (
-                          <div key={personne.id} className="flex items-center gap-2">
+                        {incident.personnes && incident.personnes.map((personne: any) => (
+                          <div key={"personne-" + personne.id} className="flex items-center gap-2">
                             <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
                               {personne.fullname.substring(0, 2).toUpperCase()}
                             </div>
                             <span className="text-xs text-slate-600 dark:text-slate-300">
                               {personne.fullname}
+                            </span>
+                          </div>
+                        ))}
+                        {incident.glpiUsers && incident.glpiUsers.map((user: any) => (
+                          <div key={"glpi-" + user.id} className="flex items-center gap-2">
+                            <div className="h-5 w-5 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-slate-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+                              {(user.fullname || user.fullName || user.login || "?").substring(0, 2).toUpperCase()}
+                            </div>
+                            <span className="text-xs text-slate-600 dark:text-slate-300">
+                              {user.fullname || user.fullName || user.login || "Utilisateur GLPI"}
                             </span>
                           </div>
                         ))}
@@ -667,6 +855,27 @@ export const IncidentList: React.FC<{ mode?: "normal" | "archives" }> = ({ mode 
                         <Info className="h-3.5 w-3.5" /> Options incident
                       </button>
 
+                      {canReopenIncident(incident) && (
+                        <button
+                          onClick={(e) => handleReopenIncident(e, incident)}
+                          disabled={reopenLoadingId === incident.id}
+                          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+                          aria-label="Rouvrir l’incident"
+                          title="Rouvrir l’incident"
+                        >
+                          {reopenLoadingId === incident.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Restauration...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 text-blue-500" />
+                              <span>Rouvrir l’incident</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                       <button
                         onClick={(e) => handleExportPDF(e, incident)}
                         disabled={downloadingId === incident.id}
